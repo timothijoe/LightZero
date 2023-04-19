@@ -633,10 +633,11 @@ class SampledEfficientZeroPolicy(Policy):
 
             # way 2: SAC-like
             y = 1 - target_sampled_actions[:, k, :].pow(2)
+            device = target_sampled_actions.device
 
             # NOTE: for numerical stability.
             target_sampled_actions_clamped = torch.clamp(
-                target_sampled_actions[:, k, :], torch.tensor(-1 + 1e-6), torch.tensor(1 - 1e-6)
+                target_sampled_actions[:, k, :], torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
             )
             target_sampled_actions_before_tanh = torch.arctanh(target_sampled_actions_clamped)
 
