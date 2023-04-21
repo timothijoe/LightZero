@@ -7,8 +7,8 @@ import numpy as np
 from ding.envs.env.base_env import BaseEnvTimestep
 from ding.torch_utils.data_helper import to_ndarray
 from ding.utils.default_helper import deep_merge_dicts
-from dizoo.metadrive.env.drive_utils import BaseDriveEnv
-
+# from dizoo.metadrive.env.drive_utils import BaseDriveEnv
+from zoo.metadrive.env.drive_utils import BaseDriveEnv
 
 def draw_multi_channels_top_down_observation(obs, show_time=0.5):
     num_channels = obs.shape[-1]
@@ -51,7 +51,7 @@ class DriveEnvWrapper(gym.Wrapper):
     config = dict()
 
     def __init__(self, env: BaseDriveEnv, cfg: Dict = None, **kwargs) -> None:
-        self.mcts_label = False 
+        self.mcts_label = True 
         if cfg is None:
             self._cfg = self.__class__.default_config()
         elif 'cfg_type' not in cfg:
@@ -80,10 +80,12 @@ class DriveEnvWrapper(gym.Wrapper):
         obs = self.env.reset(*args, **kwargs)
         obs = to_ndarray(obs, dtype=np.float32)
         if isinstance(obs, np.ndarray) and len(obs.shape) == 3:
-            obs = obs.transpose((2, 0, 1))
+            # obs = obs.transpose((2, 0, 1))
+            obs = obs
         elif isinstance(obs, dict):
             vehicle_state = obs['vehicle_state']
-            birdview = obs['birdview'].transpose((2, 0, 1))
+            # birdview = obs['birdview'].transpose((2, 0, 1))
+            birdview = obs['birdview']
             obs = {'vehicle_state': vehicle_state, 'birdview': birdview}
         self._eval_episode_return = 0.0
         self._arrive_dest = False
@@ -91,7 +93,7 @@ class DriveEnvWrapper(gym.Wrapper):
             metadrive_obs = {}
             metadrive_obs['observation'] = obs  
             metadrive_obs['action_mask'] = None 
-            metadrive_obs['to_play'] = None 
+            metadrive_obs['to_play'] = -1 
             return metadrive_obs
         return obs
 
@@ -114,10 +116,12 @@ class DriveEnvWrapper(gym.Wrapper):
         self._eval_episode_return += rew
         obs = to_ndarray(obs, dtype=np.float32)
         if isinstance(obs, np.ndarray) and len(obs.shape) == 3:
-            obs = obs.transpose((2, 0, 1))
+            # obs = obs.transpose((2, 0, 1))
+            obs = obs
         elif isinstance(obs, dict):
             vehicle_state = obs['vehicle_state']
-            birdview = obs['birdview'].transpose((2, 0, 1))
+            # birdview = obs['birdview'].transpose((2, 0, 1))
+            birdview = obs['birdview']
             obs = {'vehicle_state': vehicle_state, 'birdview': birdview}
         rew = to_ndarray([rew], dtype=np.float32)
         if done:
@@ -126,7 +130,7 @@ class DriveEnvWrapper(gym.Wrapper):
             metadrive_obs = {}
             metadrive_obs['observation'] = obs  
             metadrive_obs['action_mask'] = None 
-            metadrive_obs['to_play'] = None 
+            metadrive_obs['to_play'] = -1 
             return BaseEnvTimestep(metadrive_obs, rew, done, info)
         return BaseEnvTimestep(obs, rew, done, info)
 
