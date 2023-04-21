@@ -59,6 +59,8 @@ spec:
             cd /mnt/nfs/zhoutong/april_folder/DI-engine
             pip install -e .
             pip3 install numpy==1.22.4
+            cd /mnt/nfs/zhoutong/april_folder/metadrive
+            pip install -e .
             cd /mnt/nfs/zhoutong/april_folder/LightZero
             pip install -e .
             python3 -u /mnt/nfs/zhoutong/april_folder/LightZero/zoo/metadrive/config/train_mcts_metadrive.py
