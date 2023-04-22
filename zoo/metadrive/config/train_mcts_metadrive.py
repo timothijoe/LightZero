@@ -54,6 +54,7 @@ pendulum_sampled_efficientzero_config = dict(
             lstm_hidden_size=128,
             latent_state_dim=128,
             downsample = True,
+            image_channel=5,
         ),
         cuda=True,
         env_type='not_board_games',
