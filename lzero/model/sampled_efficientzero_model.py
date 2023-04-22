@@ -404,6 +404,8 @@ class SampledEfficientZeroModel(nn.Module):
                 # (batch_size,) -> (batch_size, action_dim=1, 1, 1)
                 # e.g.,  -> torch.Size([8, 2, 1, 1])
                 action = action.unsqueeze(-1).unsqueeze(-1).unsqueeze(-1)
+            elif len(action.shape)== 3:
+                action = action.unsqueeze(-1)
 
             action_encoding_tmp = action
             action_encoding = action_encoding_tmp.expand(latent_state.shape[0], self.action_space_size, latent_state.shape[2], latent_state.shape[3])

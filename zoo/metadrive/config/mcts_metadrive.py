@@ -6,7 +6,7 @@ from easydict import EasyDict
 continuous_action_space = True
 K = 20  # num_of_sampled_actions
 collector_env_num = 1
-n_episode = 8
+n_episode =2
 evaluator_env_num = 1
 num_simulations = 5
 update_per_collect = 20
@@ -54,6 +54,7 @@ pendulum_sampled_efficientzero_config = dict(
             lstm_hidden_size=128,
             latent_state_dim=128,
             downsample = True,
+            image_channel=5,
         ),
         cuda=True,
         env_type='not_board_games',
