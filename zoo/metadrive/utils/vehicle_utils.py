@@ -1,8 +1,8 @@
 from metadrive.component.vehicle.base_vehicle import BaseVehicle
 from metadrive.utils import Config, safe_clip_for_small_array
-from core.utils.simulator_utils.md_utils.navigation_utils import HRLNodeNavigation
+from zoo.metadrive.utils.navigation_utils import HRLNodeNavigation
 from typing import Union, Dict, AnyStr, Tuple
-from core.utils.simulator_utils.md_utils.idm_policy_utils import MacroIDMPolicy
+from zoo.metadrive.utils.idm_policy_utils import MacroIDMPolicy
 from metadrive.component.vehicle.vehicle_type import DefaultVehicle
 import copy
 class MacroDefaultVehicle(DefaultVehicle):

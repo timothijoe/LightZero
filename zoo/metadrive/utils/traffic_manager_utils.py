@@ -13,7 +13,7 @@ from metadrive.manager.base_manager import BaseManager
 from metadrive.utils import merge_dicts
 
 from metadrive.manager.traffic_manager import TrafficManager, BlockVehicles
-from core.utils.simulator_utils.md_utils.idm_policy_utils import MacroIDMPolicy
+from zoo.metadrive.utils.idm_policy_utils import MacroIDMPolicy
 #BlockVehicles = namedtuple("block_vehicles", "trigger_road vehicles")
 
 

@@ -1,6 +1,6 @@
 from metadrive.manager.agent_manager import AgentManager
-from core.utils.simulator_utils.md_utils.macro_policy import ManualMacroDiscretePolicy
-from core.utils.simulator_utils.md_utils.vehicle_utils import MacroDefaultVehicle
+from zoo.metadrive.utils.macro_policy import ManualMacroDiscretePolicy
+from zoo.metadrive.utils.vehicle_utils import MacroDefaultVehicle
 from metadrive.utils.space import ParameterSpace, VehicleParameterSpace
 from metadrive.component.vehicle.vehicle_type import DefaultVehicle
 from metadrive.utils import Config, safe_clip_for_small_array

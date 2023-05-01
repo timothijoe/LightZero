@@ -671,8 +671,8 @@ class MetaDriveTrajEnv(BaseEnv):
         super(MetaDriveTrajEnv, self).setup_engine()
         self.engine.accept("b", self.switch_to_top_down_view)
         self.engine.accept("q", self.switch_to_third_person_view)
-        from core.utils.simulator_utils.md_utils.traffic_manager_utils import MacroTrafficManager
-        from core.utils.simulator_utils.md_utils.map_manager_utils import MacroMapManager
+        from zoo.metadrive.utils.traffic_manager_utils import MacroTrafficManager
+        from zoo.metadrive.utils.map_manager_utils import MacroMapManager
         self.engine.register_manager("map_manager", MacroMapManager())
         self.engine.register_manager("traffic_manager", MacroTrafficManager())
 
