@@ -66,7 +66,7 @@ spec:
             pip install gym==0.19.0
             pip install panda3d-gltf==0.13
             pip install numpy==1.23.5
-            python3 -u /mnt/nfs/zhoutong/april_folder/LightZero/zoo/metadrive/config/formal_train_taec_mcts.py
+            python3 -u /mnt/nfs/zhoutong/may_folder/LightZero/zoo/metadrive/config/formal_train_taec_mcts.py
 
             #cd /mnt/nfs/puyuan/LightZero/
             #pip install -e .
