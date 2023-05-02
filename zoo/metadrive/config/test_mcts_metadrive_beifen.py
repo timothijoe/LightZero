@@ -23,7 +23,7 @@ pendulum_sampled_efficientzero_config = dict(
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
-        obs_shape = [5, 200, 200],
+        obs_shape = [5, 84, 84],
         manually_discretization=False,
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
@@ -32,15 +32,21 @@ pendulum_sampled_efficientzero_config = dict(
         metadrive=dict(
             use_render=True,
             traffic_density=0.10,  # Density of vehicles occupying the roads, range in [0,1]
-            show_seq_traj = True,
             map='XSOS',  # Int or string: an easy way to fill map_config
+            horizon=4000,  # Max step number
+            driving_reward=1.0,  # Reward to encourage agent to move forward.
+            speed_reward=0.1,  # Reward to encourage agent to drive at a high speed
+            use_lateral_reward=False,  # reward for lane keeping
+            out_of_road_penalty=40.0,  # Penalty to discourage driving out of road
+            crash_vehicle_penalty=40.0,  # Penalty to discourage collision
+            decision_repeat=20,  # Reciprocal of decision frequency
             out_of_route_done=True,  # Game over if driving out of road
         ),
     ),
     policy=dict(
         model=dict(
-            observation_shape=[5, 200, 200],
-            action_space_size=3,
+            observation_shape=[5, 84, 84],
+            action_space_size=2,
             continuous_action_space=continuous_action_space,
             num_of_sampled_actions=K,
             sigma_type='conditioned',
@@ -106,6 +112,5 @@ if __name__ == "__main__":
         #from lzero.entry import train_muzero_with_gym_env as train_muzero
         from lzero.entry.eval_metadrive import eval_metadrive
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
-    zt_path = None
 
-    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=5)
+    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path)

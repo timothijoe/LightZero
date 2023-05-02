@@ -91,8 +91,6 @@ class DriveEnvWrapper(gym.Wrapper):
         self._arrive_dest = False
         if self.mcts_label:
             metadrive_obs = {}
-            if isinstance(obs, dict):
-                obs = obs['birdview']
             metadrive_obs['observation'] = obs  
             metadrive_obs['action_mask'] = None 
             metadrive_obs['to_play'] = -1 
@@ -130,8 +128,6 @@ class DriveEnvWrapper(gym.Wrapper):
             info['eval_episode_return'] = self._eval_episode_return
         if self.mcts_label:
             metadrive_obs = {}
-            if isinstance(obs, dict):
-                obs = obs['birdview']
             metadrive_obs['observation'] = obs  
             metadrive_obs['action_mask'] = None 
             metadrive_obs['to_play'] = -1 
@@ -140,7 +136,7 @@ class DriveEnvWrapper(gym.Wrapper):
 
     @property
     def observation_space(self):
-        return gym.spaces.Box(0, 1, shape=(5, 200, 200), dtype=np.float32)
+        return gym.spaces.Box(0, 1, shape=(5, 84, 84), dtype=np.float32)
 
     def seed(self, seed: int, dynamic_seed: bool = True) -> None:
         self._seed = seed

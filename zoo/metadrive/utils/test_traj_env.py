@@ -23,7 +23,7 @@ _traj_decoder = VaeDecoder(
     steer_rate_constrain_value=0.5,
 )
 _traj_decoder = _traj_decoder.to('cuda')
-vae_load_dir = '/home/zhoutong/osiris/LightZero/zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+vae_load_dir = '/home/SENSETIME/zhoutong/osiris/LightZero/zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
 _traj_decoder.load_state_dict(torch.load(vae_load_dir))
 traj = _traj_decoder(latent_action, init_state)
 init_state = init_state[:,:4]
@@ -69,6 +69,7 @@ metadrive_config=dict(use_render=True,
     out_of_road_penalty = 5.0,
     debug_info=True,
     ignore_first_steer = False,
+    zt_mcts = True,
 )
 
 
@@ -79,8 +80,10 @@ from zoo.metadrive.env.traj_env import MetaDriveTrajEnv
 env = MetaDriveTrajEnv(config=metadrive_config)
 # env = gym.make("MetaDrive-10env-v0", config=dict(use_render=True))
 env.reset()
+latent_action = latent_action.cpu().numpy()
 for i in range(100):
-    obs, reward, done, info = env.step(traj_cpu)
+    #obs, reward, done, info = env.step(traj_cpu)
+    obs, reward, done, info = env.step(latent_action)
     env.render()
     if done:
         env.reset()

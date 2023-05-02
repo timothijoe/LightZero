@@ -13,10 +13,14 @@ from ding.policy import create_policy
 from ding.utils import set_pkg_seed
 from ding.worker import BaseLearner
 from lzero.worker import MuZeroEvaluator
-from dizoo.metadrive.env.drive_env import MetaDrivePPOOriginEnv
+# from dizoo.metadrive.env.drive_env import MetaDrivePPOOriginEnv
+from zoo.metadrive.env.traj_env import MetaDriveTrajEnv
 from zoo.metadrive.env.drive_wrapper import DriveEnvWrapper
 def wrapped_env(env_cfg, wrapper_cfg=None):
-    return DriveEnvWrapper(MetaDrivePPOOriginEnv(env_cfg), wrapper_cfg)
+    return DriveEnvWrapper(MetaDriveTrajEnv(env_cfg), wrapper_cfg)
+
+# def wrapped_env(env_cfg, wrapper_cfg=None):
+#     return DriveEnvWrapper(MetaDrivePPOOriginEnv(env_cfg), wrapper_cfg)
 def eval_metadrive(
         input_cfg: Tuple[dict, dict],
         seed: int = 0,

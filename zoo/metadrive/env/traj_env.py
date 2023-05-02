@@ -31,6 +31,7 @@ from metadrive.utils.utils import auto_termination
 # from core.policy.ad_policy.traj_vae import VaeDecoder
 import torch
 from metadrive.component.road_network import Road
+from zoo.metadrive.utils.traj_decoder import VaeDecoder
 
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
@@ -110,6 +111,8 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     debug_info=False,
     enable_u_turn = False,
     #episode_max_step = 100,
+    
+    zt_mcts = True,
 
     
 
@@ -171,6 +174,10 @@ class MetaDriveTrajEnv(BaseEnv):
             init_observations=self._get_observations(), init_action_space=self._get_action_space()
         )
         self.action_type = DiscreteMetaAction()
+        
+        
+    
+        
         #self.action_space = self.action_type.space()
 
         # lazy initialization, create the main vehicle in the lazy_init() func
@@ -210,13 +217,57 @@ class MetaDriveTrajEnv(BaseEnv):
         self.vel_speed = 0.0
         self.z_state = np.zeros(6)
         self.avg_speed = self.config["avg_speed"]
+        vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+        self._traj_decoder = VaeDecoder(
+            embedding_dim = 64,
+            h_dim = 64,
+            latent_dim = 3,
+            seq_len = 10,
+            dt = 0.1,
+            traj_control_mode = 'acc',
+            one_side_class_vae=False,
+            steer_rate_constrain_value=0.5,
+        )
+        # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))
+        self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
 
+    @property
+    def observation_space(self):
+        return gym.spaces.Box(0, 1, shape=(200, 200, 5), dtype=np.float32)
+
+    @property
+    def action_space(self):
+        return gym.spaces.Box(-1, 1, shape=(3, ), dtype=np.float32)
+
+    @property
+    def reward_space(self):
+        return gym.spaces.Box(-100, 100, shape=(1, ), dtype=np.float32)    
     # define a action type, and execution style
     # Now only one action will be taken, cosin function, and we set dt equals self.engine.dt
     # now that in this situation, we directly set trajectory len equals to simulation frequency
 
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
         self.episode_steps += 1
+        
+        
+        if self.config["zt_mcts"]:
+            init_state = copy.deepcopy(self.z_state)
+            # (6)
+            init_state = torch.from_numpy(init_state).to(torch.float32)
+            # (1,6)
+            init_state = init_state.unsqueeze(0)
+            latent_action = torch.from_numpy(actions)
+            latent_action = latent_action.unsqueeze(0).to(torch.float32)
+            with torch.no_grad():
+                traj = self._traj_decoder(latent_action, init_state)
+            init_state = init_state[:,:4]
+            traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
+            traj = traj[0,:,:2]
+            traj_cpu = traj.detach().to('cpu').numpy()
+            actions = traj_cpu
+        
+        
+        
         # if not isinstance(actions,list):
         #     action_seq = []
         #     for i in range(31):
