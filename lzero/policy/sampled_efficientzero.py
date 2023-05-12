@@ -607,7 +607,10 @@ class SampledEfficientZeroPolicy(Policy):
         """
         (mu, sigma
          ) = policy_logits[:, :self._cfg.model.action_space_size], policy_logits[:, -self._cfg.model.action_space_size:]
-
+        device = sigma.device
+        sigma = torch.clamp(
+                sigma, torch.exp(torch.tensor(-4)).to(device), torch.exp(torch.tensor(2)).to(device)
+            )
         dist = Independent(Normal(mu, sigma), 1)
 
         # take the init hypothetical step k=unroll_step

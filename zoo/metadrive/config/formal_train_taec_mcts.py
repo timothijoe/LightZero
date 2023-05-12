@@ -60,8 +60,8 @@ pendulum_sampled_efficientzero_config = dict(
             num_of_sampled_actions=K,
             sigma_type='conditioned',
             model_type='conv',  # options={'mlp', 'conv'}
-            lstm_hidden_size=128,
-            latent_state_dim=128,
+            lstm_hidden_size=512,
+            latent_state_dim=512,
             downsample = True,
             image_channel=5,
         ),
@@ -79,7 +79,7 @@ pendulum_sampled_efficientzero_config = dict(
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
         eval_freq=int(2e3),
-        replay_buffer_size=int(1e5),  # the size/capacity of replay_buffer, in the terms of transitions.
+        replay_buffer_size=int(4e4),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
     ),
