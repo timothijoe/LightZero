@@ -73,6 +73,7 @@ class SampledEfficientZeroPolicy(Policy):
         mcts_ctree=True,
         # (bool) Whether to use cuda in policy.
         cuda=True,
+        use_expert = True,
         # (int) The number of environments used in collecting data.
         collector_env_num=8,
         # (int) The number of environments used in evaluating policy.
@@ -287,6 +288,12 @@ class SampledEfficientZeroPolicy(Policy):
         target_value_prefix, target_value, target_policy = target_batch
 
         obs_batch, obs_target_batch = prepare_obs(obs_batch_ori, self._cfg)
+        encoder_image_list = []
+        encoder_image_list.append(obs_batch)
+        for zt in range(5):
+            beg_index = self._cfg.model.image_channel * zt
+            end_index = self._cfg.model.image_channel * (zt + self._cfg.model.frame_stack_num)
+            encoder_image_list.append(obs_target_batch[:, beg_index:end_index, :, :])
 
         # do augmentations
         if self._cfg.use_augmentation:
@@ -328,6 +335,15 @@ class SampledEfficientZeroPolicy(Policy):
         # the core initial_inference in SampledEfficientZero policy.
         # ==============================================================
         network_output = self._learn_model.initial_inference(obs_batch)
+        with torch.no_grad():
+            expert_frame = encoder_image_list[0]
+            expert_latent_action = self._learn_model.get_expert_action(expert_frame)
+            device = expert_latent_action.device
+            expert_latent_action = torch.clamp(
+                expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+            )
+            expert_latent_action = torch.arctanh(expert_latent_action)
+
         # value_prefix shape: (batch_size, 10), the ``value_prefix`` at the first step is zero padding.
         latent_state, value_prefix, reward_hidden_state, value, policy_logits = ez_network_output_unpack(network_output)
 
@@ -353,6 +369,7 @@ class SampledEfficientZeroPolicy(Policy):
         value_loss = cross_entropy_loss(value, target_value_categorical[:, 0])
 
         policy_loss = torch.zeros(self._cfg.batch_size, device=self._cfg.device)
+        expert_loss = torch.zeros(1, device=self._cfg.device)
         # ==============================================================
         # sampled related core code: calculate policy loss, typically cross_entropy_loss
         # ==============================================================
@@ -361,6 +378,7 @@ class SampledEfficientZeroPolicy(Policy):
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma = self._calculate_policy_loss_cont(
                 policy_loss, policy_logits, target_policy, mask_batch, child_sampled_actions_batch, unroll_step=0
             )
+            expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
         else:
             """discrete action space"""
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -434,6 +452,15 @@ class SampledEfficientZeroPolicy(Policy):
                     child_sampled_actions_batch,
                     unroll_step=step_i + 1
                 )
+                with torch.no_grad():
+                    expert_frame = encoder_image_list[step_i+1]
+                    expert_latent_action = self._learn_model.get_expert_action(expert_frame)
+                    device = expert_latent_action.device
+                    expert_latent_action = torch.clamp(
+                        expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                    )
+                    expert_latent_action = torch.arctanh(expert_latent_action)
+                expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
             else:
                 """discrete action space"""
                 policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -476,6 +503,9 @@ class SampledEfficientZeroPolicy(Policy):
             self._cfg.policy_entropy_loss_weight * policy_entropy_loss
         )
         weighted_total_loss = (weights * loss).mean()
+        # use_expert = True 
+        if self._cfg.use_expert:
+            weighted_total_loss += expert_loss.mean() * 5
         weighted_total_loss.register_hook(lambda grad: grad * gradient_scale)
         self._optimizer.zero_grad()
         weighted_total_loss.backward()
@@ -493,7 +523,7 @@ class SampledEfficientZeroPolicy(Policy):
 
         loss_data = (
             weighted_total_loss.item(), loss.mean().item(), policy_loss.mean().item(), value_prefix_loss.mean().item(),
-            value_loss.mean().item(), consistency_loss.mean()
+            value_loss.mean().item(), consistency_loss.mean(), expert_loss.mean().item()
         )
         if self._cfg.monitor_extra_statistics:
             predicted_value_prefixs = torch.stack(predicted_value_prefixs).transpose(1, 0).squeeze(-1)
@@ -519,6 +549,7 @@ class SampledEfficientZeroPolicy(Policy):
                 'value_prefix_loss': loss_data[3],
                 'value_loss': loss_data[4],
                 'consistency_loss': loss_data[5] / self._cfg.num_unroll_steps,
+                'expert_loss': loss_data[6],
 
                 # ==============================================================
                 # priority related
@@ -1068,6 +1099,7 @@ class SampledEfficientZeroPolicy(Policy):
                 'value_prefix_loss',
                 'value_loss',
                 'consistency_loss',
+                'expert_loss',
                 'value_priority',
                 'target_value_prefix',
                 'target_value',

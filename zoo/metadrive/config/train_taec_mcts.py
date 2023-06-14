@@ -14,7 +14,7 @@ n_episode = 8
 evaluator_env_num = 1
 num_simulations = 50
 update_per_collect = 200
-batch_size = 64 #256
+batch_size = 16 #256
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
 # ==============================================================
@@ -66,6 +66,7 @@ pendulum_sampled_efficientzero_config = dict(
             image_channel=5,
         ),
         cuda=True,
+        use_expert=True,
         env_type='not_board_games',
         game_segment_length=50,
         update_per_collect=update_per_collect,
