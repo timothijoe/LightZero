@@ -321,6 +321,7 @@ class StochasticMuZeroPolicy(Policy):
         commitment_loss = torch.zeros(self._cfg.batch_size, device=self._cfg.device)
 
         gradient_scale = 1 / self._cfg.num_unroll_steps
+        chance_list = []
 
         # ==============================================================
         # the core recurrent_inference in MuZero policy.
@@ -339,6 +340,7 @@ class StochasticMuZeroPolicy(Policy):
             chance_code, encode_output = self._learn_model._encode_vqvae(concat_frame)
             #chance_code, encode_output = self._learn_model._encode_vqvae(encoder_image_list[step_i])
             chance_code_long = torch.argmax(chance_code, dim=1).long().unsqueeze(-1)
+            chance_list.append(chance_code_long)
             
             network_output = self._learn_model.recurrent_inference(after_state, chance_code_long, afterstate=True)
             latent_state, reward, value, policy_logits = mz_network_output_unpack(network_output)
@@ -412,6 +414,10 @@ class StochasticMuZeroPolicy(Policy):
             + self._cfg.policy_loss_weight * commitment_loss
             
         )
+        chance_list = torch.cat(chance_list, dim=0)
+        max_chance = torch.max(chance_list).float()
+        min_chance = torch.min(chance_list).float()
+        median_chance = torch.median(chance_list).float()
         weighted_total_loss = (weights * loss).mean()
 
         gradient_scale = 1 / self._cfg.num_unroll_steps
@@ -480,7 +486,10 @@ class StochasticMuZeroPolicy(Policy):
             'transformed_target_value': td_data[4].flatten().mean().item(),
             'predicted_rewards': td_data[7].flatten().mean().item(),
             'predicted_values': td_data[8].flatten().mean().item(),
-            'total_grad_norm_before_clip': total_grad_norm_before_clip
+            'total_grad_norm_before_clip': total_grad_norm_before_clip,
+            'max_chance': max_chance.item(),
+            'min_chance': min_chance.item(),
+            'median_chance': median_chance.item(),
         }
 
     def _init_collect(self) -> None:
@@ -703,6 +712,9 @@ class StochasticMuZeroPolicy(Policy):
             'transformed_target_reward',
             'transformed_target_value',
             'total_grad_norm_before_clip',
+            'max_chance',
+            'min_chance',
+            'median_chance',
         ]
 
     def _state_dict_learn(self) -> Dict[str, Any]:
