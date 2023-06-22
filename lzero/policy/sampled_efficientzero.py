@@ -1064,6 +1064,15 @@ class SampledEfficientZeroPolicy(Policy):
                 except Exception:
                     # logging.warning('ctree_sampled_efficientzero roots.get_sampled_actions() return list')
                     action = np.array(roots_sampled_actions[i][action])
+                
+                
+                
+                
+                expert_latent_action = self._learn_model.get_expert_action(data)
+                action = np.array(np.tanh(expert_latent_action))
+                action = action[0]
+                
+                
 
                 if not self._cfg.model.continuous_action_space:
                     if len(action.shape) == 0:
