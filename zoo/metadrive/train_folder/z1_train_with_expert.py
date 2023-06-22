@@ -8,12 +8,12 @@ SEQ_TRAJ_LEN = 10
 
 
 continuous_action_space = True
-K = 20  # num_of_sampled_actions
+K = 10  # num_of_sampled_actions
 collector_env_num = 8
 n_episode = 8
 evaluator_env_num = 8
 num_simulations = 50
-update_per_collect = 200
+update_per_collect = 100
 batch_size = 64 #256
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
@@ -73,7 +73,7 @@ pendulum_sampled_efficientzero_config = dict(
         batch_size=batch_size,
         optim_type='Adam',
         lr_piecewise_constant_decay=False,
-        learning_rate=0.003,
+        learning_rate=0.0003,
         # NOTE: for continuous gaussian policy, we use the policy_entropy_loss as in the original Sampled MuZero paper.
         policy_entropy_loss_weight=5e-3,
         num_simulations=num_simulations,
