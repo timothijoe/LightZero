@@ -46,6 +46,7 @@ namespace tree
         bool continuous_action_space;
         std::vector<int> children_index;
         std::map<size_t, CNode> children;
+        int expert_sample_num = 1;
 
         std::vector<CAction> legal_actions;
 
@@ -55,6 +56,7 @@ namespace tree
         ~CNode();
 
         void expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits);
+        void expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits, std::vector<float> expert_latent_action);
         void add_exploration_noise(float exploration_fraction, const std::vector<float> &noises);
         float compute_mean_q(int isRoot, float parent_q, float discount_factor);
         void print_out();
@@ -78,12 +80,14 @@ namespace tree
         std::vector<CNode> roots;
         std::vector<std::vector<float> > legal_actions_list;
         bool continuous_action_space;
+        int expert_sample_num = 1;
 
         CRoots();
         CRoots(int root_num, std::vector<std::vector<float> > legal_actions_list, int action_space_size, int num_of_sampled_actions, bool continuous_action_space);
         ~CRoots();
 
         void prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch);
+        void prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<float>> expert_latent_action);
         void prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch);
         void clear();
         // sampled related core code

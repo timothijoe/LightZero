@@ -59,8 +59,11 @@ cdef class Roots:
                                 continuous_action_space)
 
     def prepare(self, float root_noise_weight, list noises, list value_prefix_pool, list policy_logits_pool,
-                vector[int] & to_play_batch):
-        self.roots[0].prepare(root_noise_weight, noises, value_prefix_pool, policy_logits_pool, to_play_batch)
+                vector[int] & to_play_batch, expert_latent_action=None):
+        if expert_latent_action is None:
+            self.roots[0].prepare(root_noise_weight, noises, value_prefix_pool, policy_logits_pool, to_play_batch)
+        else:
+            self.roots[0].prepare(root_noise_weight, noises, value_prefix_pool, policy_logits_pool, to_play_batch, expert_latent_action)
 
     def prepare_no_noise(self, list value_prefix_pool, list policy_logits_pool, vector[int] & to_play_batch):
         self.roots[0].prepare_no_noise(value_prefix_pool, policy_logits_pool, to_play_batch)

@@ -66,8 +66,8 @@ cdef extern from "lib/cnode.h" namespace "tree":
         bool continuous_action_space
         vector[CNode] roots
         vector[vector[CNode]] node_pools
-
         void prepare(float root_noise_weight, const vector[vector[float]] &noises, const vector[float] &value_prefixs, const vector[vector[float]] &policies, vector[int] to_play_batch)
+        void prepare(float root_noise_weight, const vector[vector[float]] &noises, const vector[float] &value_prefixs, const vector[vector[float]] &policies, vector[int] to_play_batch, vector[vector[float]] expert_latent_action)
         void prepare_no_noise(const vector[float] &value_prefixs, const vector[vector[float]] &policies, vector[int] to_play_batch)
         void clear()
         vector[vector[vector[float]]] get_trajectories()
