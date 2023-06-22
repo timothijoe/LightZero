@@ -5,7 +5,7 @@ from easydict import EasyDict
 # ==============================================================
 continuous_action_space = True
 K = 10  # num_of_sampled_actions
-collector_env_num = 1
+collector_env_num = 2
 n_episode = 8
 evaluator_env_num = 1
 num_simulations = 25

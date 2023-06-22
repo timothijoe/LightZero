@@ -44,9 +44,10 @@ class Node:
         self.children_index = []
         self.simulation_index = 0
         self.batch_index = 0
+        self.expert_sample_num = 1
 
     def expand(
-            self, to_play: int, simulation_index: int, batch_index: int, value_prefix: float, policy_logits: List[float]
+            self, to_play: int, simulation_index: int, batch_index: int, value_prefix: float, policy_logits: List[float], expert_logits = None,
     ) -> None:
         """
         Overview:
@@ -92,7 +93,20 @@ class Node:
             self.sigma = sigma
             dist = Independent(Normal(mu, sigma), 1)
             # print(dist.batch_shape, dist.event_shape)
-            sampled_actions_before_tanh = dist.sample(torch.tensor([self.num_of_sampled_actions]))
+            num_remaining_action = self.num_of_sampled_actions 
+            if expert_logits is not None:
+                num_remaining_action = self.num_of_sampled_actions -1
+                sampled_actions_before_tanh = dist.sample(torch.tensor([num_remaining_action]))
+                expert_actions_before_tanh = torch.from_numpy(expert_logits)
+                expert_actions_before_tanh = expert_actions_before_tanh.unsqueeze(0)
+                sampled_actions_before_tanh = torch.cat([sampled_actions_before_tanh, expert_actions_before_tanh])
+            else:
+                sampled_actions_before_tanh = dist.sample(torch.tensor([self.num_of_sampled_actions]))
+            # sampled_actions_before_tanh = dist.sample(torch.tensor([num_remaining_action]))
+            # expert_actions_before_tanh = torch.from_numpy(expert_logits)
+            # expert_actions_before_tanh = expert_actions_before_tanh.unsqueeze(0)
+            # sampled_actions_before_tanh = torch.cat([sampled_actions_before_tanh, expert_actions_before_tanh])
+            
 
             sampled_actions = torch.tanh(sampled_actions_before_tanh)
             y = 1 - sampled_actions.pow(2) + 1e-6
@@ -325,7 +339,8 @@ class Roots:
             noises: List[float],
             value_prefixs: List[float],
             policies: List[List[float]],
-            to_play: int = -1
+            to_play: int = -1,
+            expert_latent_action: List[List[float]] = None,
     ) -> None:
         """
         Overview:
@@ -342,7 +357,7 @@ class Roots:
             if to_play is None:
                 self.roots[i].expand(-1, 0, i, value_prefixs[i], policies[i])
             else:
-                self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i])
+                self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i], expert_latent_action[i])
             self.roots[i].add_exploration_noise(root_noise_weight, noises[i])
 
             self.roots[i].visit_count += 1
