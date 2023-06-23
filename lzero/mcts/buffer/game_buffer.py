@@ -384,6 +384,8 @@ class GameBuffer(ABC, object):
         del self.game_segment_buffer[:excess_game_segment_index]
         self.game_pos_priorities = self.game_pos_priorities[excess_game_positions:]
         del self.game_segment_game_pos_look_up[:excess_game_positions]
+        import gc  
+        gc.collect()
         self.base_idx += excess_game_segment_index
         self.clear_time = time.time()
 

@@ -97,9 +97,12 @@ class Node:
             if expert_logits is not None:
                 num_remaining_action = self.num_of_sampled_actions -1
                 sampled_actions_before_tanh = dist.sample(torch.tensor([num_remaining_action]))
+                expert_logits = np.array(expert_logits)
                 expert_actions_before_tanh = torch.from_numpy(expert_logits)
                 expert_actions_before_tanh = expert_actions_before_tanh.unsqueeze(0)
                 sampled_actions_before_tanh = torch.cat([sampled_actions_before_tanh, expert_actions_before_tanh])
+                expert_sigma = torch.full_like(sigma, 0.8)
+                dist_expert = Independent(Normal(expert_actions_before_tanh, expert_sigma),1)
             else:
                 sampled_actions_before_tanh = dist.sample(torch.tensor([self.num_of_sampled_actions]))
             # sampled_actions_before_tanh = dist.sample(torch.tensor([num_remaining_action]))

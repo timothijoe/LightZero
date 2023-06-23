@@ -268,8 +268,11 @@ namespace tree
                 {
                     std::normal_distribution<float> distribution(mu[j], sigma[j]);
                     sampled_action_one_dim_before_tanh = distribution(generator);
+                    float expert_sigma = 0.8;
+                    float expert_bias = exp(-pow((sampled_action_one_dim_before_tanh - expert_latent_action[j]), 2) / (2 * pow(expert_sigma, 2)) - log(expert_sigma) - log(sqrt(2 * M_PI)));
+                    sampled_action_prob_before_tanh *= (exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)))+expert_bias);
                     // refer to python normal log_prob method
-                    sampled_action_prob_before_tanh *= exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)));
+                    //sampled_action_prob_before_tanh *= exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)));
                     sampled_action_before_tanh.push_back(sampled_action_one_dim_before_tanh);
                     sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
                     y.push_back(1 - pow(tanh(sampled_action_one_dim_before_tanh), 2) + 1e-6);
@@ -295,7 +298,10 @@ namespace tree
                     // sampled_action_one_dim_before_tanh = distribution(generator);
                     // refer to python normal log_prob method
                     sampled_action_one_dim_before_tanh = expert_latent_action[j];
-                    sampled_action_prob_before_tanh *= exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)));
+                    float expert_sigma = 0.8;
+                    float expert_bias = exp(-pow((sampled_action_one_dim_before_tanh - expert_latent_action[j]), 2) / (2 * pow(expert_sigma, 2)) - log(expert_sigma) - log(sqrt(2 * M_PI)));
+                    sampled_action_prob_before_tanh *= (exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)))+expert_bias);
+                    //sampled_action_prob_before_tanh *= exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)));
                     sampled_action_before_tanh.push_back(sampled_action_one_dim_before_tanh);
                     sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
                     y.push_back(1 - pow(tanh(sampled_action_one_dim_before_tanh), 2) + 1e-6);
@@ -991,7 +997,7 @@ namespace tree
         // sampled related core code
         for (int i = 0; i < this->root_num; ++i)
         {
-            this->roots[i].expand(to_play_batch[i], 0, i, value_prefixs[i], policies[i]);
+            this->roots[i].expand(to_play_batch[i], 0, i, value_prefixs[i], policies[i], expert_latent_action[i]);
             this->roots[i].add_exploration_noise(root_noise_weight, noises[i]);
             this->roots[i].visit_count += 1;
         }
@@ -1011,6 +1017,24 @@ namespace tree
         for (int i = 0; i < this->root_num; ++i)
         {
             this->roots[i].expand(to_play_batch[i], 0, i, value_prefixs[i], policies[i]);
+
+            this->roots[i].visit_count += 1;
+        }
+    }
+
+    void CRoots::prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<float>> expert_latent_action)
+    {
+        /*
+        Overview:
+            Expand the roots without noise.
+        Arguments:
+            - value_prefixs: the vector of value prefixs of each root.
+            - policies: the vector of policy logits of each root.
+            - to_play_batch: the vector of the player side of each root.
+        */
+        for (int i = 0; i < this->root_num; ++i)
+        {
+            this->roots[i].expand(to_play_batch[i], 0, i, value_prefixs[i], policies[i], expert_latent_action[i]);
 
             this->roots[i].visit_count += 1;
         }

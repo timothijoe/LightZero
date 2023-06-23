@@ -60,8 +60,8 @@ pendulum_sampled_efficientzero_config = dict(
             num_of_sampled_actions=K,
             sigma_type='conditioned',
             model_type='conv',  # options={'mlp', 'conv'}
-            lstm_hidden_size=512,
-            latent_state_dim=512,
+            lstm_hidden_size=128,
+            latent_state_dim=128,
             downsample = True,
             image_channel=5,
         ),

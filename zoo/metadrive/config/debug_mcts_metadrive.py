@@ -10,7 +10,7 @@ n_episode = 8
 evaluator_env_num = 1
 num_simulations = 25
 update_per_collect = 200
-batch_size = 256
+batch_size = 16
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
 # ==============================================================
@@ -64,7 +64,7 @@ pendulum_sampled_efficientzero_config = dict(
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
         eval_freq=int(2e3),
-        replay_buffer_size=int(1e6),  # the size/capacity of replay_buffer, in the terms of transitions.
+        replay_buffer_size=int(64),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
     ),

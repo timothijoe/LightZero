@@ -73,7 +73,7 @@ class SampledEfficientZeroPolicy(Policy):
         mcts_ctree=True,
         # (bool) Whether to use cuda in policy.
         cuda=True,
-        use_expert = True,
+        use_expert = False,
         # (int) The number of environments used in collecting data.
         collector_env_num=8,
         # (int) The number of environments used in evaluating policy.
@@ -1036,8 +1036,22 @@ class SampledEfficientZeroPolicy(Policy):
                     self._cfg.model.num_of_sampled_actions, self._cfg.model.continuous_action_space
                 )
 
+
+            with torch.no_grad():
+                expert_frame = data
+                expert_latent_action = self._collect_model.get_expert_action(expert_frame)
+                device = expert_latent_action.device
+                expert_latent_action = torch.clamp(
+                    expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
+                expert_latent_action = torch.arctanh(expert_latent_action)
+                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
+
+
+            #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
-            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
+            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play, expert_latent_action)
 
             roots_visit_count_distributions = roots.get_distributions(
             )  # shape: ``{list: batch_size} ->{list: action_space_size}``
@@ -1081,9 +1095,9 @@ class SampledEfficientZeroPolicy(Policy):
                 
                 
                 
-                expert_latent_action = self._learn_model.get_expert_action(data)
-                action = np.array(np.tanh(expert_latent_action))
-                action = action[0]
+                # expert_latent_action = self._learn_model.get_expert_action(data)
+                # action = np.array(np.tanh(expert_latent_action))
+                # action = action[0]
                 
                 
 
