@@ -1050,8 +1050,8 @@ class SampledEfficientZeroPolicy(Policy):
 
             #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
             #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
-            roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
-            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play, expert_latent_action)
+            roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
 
             roots_visit_count_distributions = roots.get_distributions(
             )  # shape: ``{list: batch_size} ->{list: action_space_size}``
