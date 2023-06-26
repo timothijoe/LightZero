@@ -110,6 +110,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     show_seq_traj = False,
     debug_info=False,
     enable_u_turn = False,
+    additional_trajs = True,
     #episode_max_step = 100,
     
     zt_mcts = True,
@@ -248,7 +249,9 @@ class MetaDriveTrajEnv(BaseEnv):
 
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
         self.episode_steps += 1
-        
+        if isinstance(actions, dict):
+            raw_actions = actions 
+            actions = actions[0]
         
         if self.config["zt_mcts"]:
             init_state = copy.deepcopy(self.z_state)
@@ -262,40 +265,34 @@ class MetaDriveTrajEnv(BaseEnv):
                 traj = self._traj_decoder(latent_action, init_state)
             init_state = init_state[:,:4]
             traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
+            valid_traj = traj 
             traj = traj[0,:,:2]
             traj_cpu = traj.detach().to('cpu').numpy()
             actions = traj_cpu
-        
-        
-        
-        # if not isinstance(actions,list):
-        #     action_seq = []
-        #     for i in range(31):
-        #         action_seq.append([actions[2 * i], actions[2 *i+1]])
-        #     actions = action_seq
-        #action_seq =  np.array(action_seq)
-        # init_state = np.zeros([1, 4])
-        # init_state[0,3] = self.vel_speed
-        # init_state = torch.from_numpy(init_state)
-        #actions = np.array([1,1])
-        # if isinstance(actions, np.ndarray):
-        #     batch_action = torch.from_numpy(actions)
-        #     batch_action = torch.unsqueeze(batch_action, 0)
-        #     batch_action = batch_action.to(torch.float32)
-        #     init_state = init_state.to(torch.float32)
-        #     with torch.no_grad():
-        #         trajs = self.vae_decoder(batch_action, init_state)
-        #     trajs = torch.cat([init_state.unsqueeze(1), trajs], dim = 1)
-        #     trajs = trajs[:,:,:2]
-        #     trajs = torch.squeeze(trajs, 0)
-        #     actions = trajs.numpy()
+        if self.config['additional_trajs']:
+            valid_traj = valid_traj   
+            # (1,4) 
+            init_state_0 = valid_traj[:,-1]
+            init_state = torch.zeros_like(init_state_0)
+            init_state[0,3] = init_state_0[0,3]
+            
+            latent_action = torch.from_numpy(raw_actions[1])
+            latent_action = latent_action.unsqueeze(0).to(torch.float32)
+            with torch.no_grad():
+                traj = self._traj_decoder(latent_action, init_state)
+            # init_state = init_state[:,:4]
+            # traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
+            traj = traj[0,:,:2]
+            traj_cpu = traj.detach().to('cpu').numpy()
+            rbt_state = init_state_0[0,:3].detach().to('cpu').numpy()
+            addition_actions = self.convert_waypoint_list_coord(traj_cpu, rbt_state)
+            # addition_actions = traj_cpu
+            actions = np.concatenate((actions, addition_actions), axis=0) 
         macro_actions = self._preprocess_macro_waypoints(actions)
         step_infos = self._step_macro_simulator(macro_actions)
         o, r, d, i = self._get_step_return(actions, step_infos)
         self.step_num = self.step_num + 1
         self.episode_rwd = self.episode_rwd + r 
-        #print('step number is: {}'.format(self.step_num))
-        #o = o.transpose((2,0,1))
         return o, r, d, i
 
     def get_waypoint_list(self):
@@ -901,6 +898,36 @@ class MetaDriveTrajEnv(BaseEnv):
         average_dist_per_step = float(self.config['seq_traj_len']) * average_speed * self.config['physics_world_step_size']
         max_step = int(distance / average_dist_per_step) + 1
         return max_step
+
+    def convert_wp_to_world_coord3d(self, wp, robot_pos):
+        odom_goal = [0.0, 0.0, 0.0]
+        local_goal = wp
+        delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
+        delta_angle = np.arctan2(local_goal[1], local_goal[0])
+        total_angle = delta_angle + robot_pos[2]
+        odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
+        odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
+        yaw_z = local_goal[2] + robot_pos[2]
+        odom_goal[2] = np.arctan2(np.sin(yaw_z), np.cos(yaw_z))
+        return odom_goal   
+    
+    def convert_wp_to_world_coord(self, wp, robot_pos):
+        odom_goal = [0.0, 0.0]
+        local_goal = wp
+        delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
+        delta_angle = np.arctan2(local_goal[1], local_goal[0])
+        total_angle = delta_angle + robot_pos[2]
+        odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
+        odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
+        return odom_goal        
+
+    def convert_waypoint_list_coord(self, wp_list, rbt_pos):
+        wp_w_list = []
+        for wp in wp_list:
+            wp_w = self.convert_wp_to_world_coord(wp, rbt_pos)
+            wp_w_list.append(wp_w)
+        return wp_w_list
+
 
 register(
     id='HRL-v1',

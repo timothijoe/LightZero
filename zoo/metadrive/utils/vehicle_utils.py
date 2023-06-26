@@ -54,7 +54,8 @@ class MacroDefaultVehicle(DefaultVehicle):
                  show_line_to_dest=self.engine.global_config["vehicle_config"]["show_line_to_dest"],
                  seq_traj_len = self.engine.global_config["seq_traj_len"],
                  show_seq_traj = self.engine.global_config["show_seq_traj"],
-                 enable_u_turn = self.engine.global_config["enable_u_turn"])
+                 enable_u_turn = self.engine.global_config["enable_u_turn"],
+                 additional_trajs = self.engine.global_config["additional_trajs"],)
 
 class MacroBaseVehicle(BaseVehicle):
 

@@ -971,7 +971,7 @@ class SampledEfficientZeroPolicy(Policy):
         else:
             self._mcts_eval = MCTSPtree(self._cfg)
 
-    def _forward_eval(self, data: torch.Tensor, action_mask: list, to_play: -1, ready_env_id=None):
+    def _forward_evall(self, data: torch.Tensor, action_mask: list, to_play: -1, ready_env_id=None):
         """
          Overview:
              The forward function for evaluating the current policy in eval mode. Use model to execute MCTS search.
@@ -993,6 +993,7 @@ class SampledEfficientZeroPolicy(Policy):
              - output (:obj:`Dict[int, Any]`): Dict type data, the keys including ``action``, ``distributions``, \
                  ``visit_count_distribution_entropy``, ``value``, ``pred_value``, ``policy_logits``.
          """
+        return 
         self._eval_model.eval()
         active_eval_env_num = data.shape[0]
         with torch.no_grad():
@@ -1001,7 +1002,6 @@ class SampledEfficientZeroPolicy(Policy):
             latent_state_roots, value_prefix_roots, reward_hidden_state_roots, pred_values, policy_logits = ez_network_output_unpack(
                 network_output
             )
-
             if not self._eval_model.training:
                 # if not in training, obtain the scalars of the value/reward
                 pred_values = self.inverse_scalar_transform_handle(pred_values).detach().cpu().numpy()  # shape（B, 1）
@@ -1090,23 +1090,20 @@ class SampledEfficientZeroPolicy(Policy):
                     # logging.warning('ptree_sampled_efficientzero roots.get_sampled_actions() return array')
                 except Exception:
                     # logging.warning('ctree_sampled_efficientzero roots.get_sampled_actions() return list')
-                    action = np.array(roots_sampled_actions[i][action])
-                
-                
-                
-                
+                    action = np.array(roots_sampled_actions[i][action])             
                 # expert_latent_action = self._learn_model.get_expert_action(data)
                 # action = np.array(np.tanh(expert_latent_action))
                 # action = action[0]
-                
-                
 
                 if not self._cfg.model.continuous_action_space:
                     if len(action.shape) == 0:
                         action = int(action)
                     elif len(action.shape) == 1:
                         action = int(action[0])
-
+                now_action = action  
+                action = {} 
+                action[0] = now_action 
+                action[1] = now_action
                 output[env_id] = {
                     'action': action,
                     'distributions': distributions,
@@ -1116,7 +1113,145 @@ class SampledEfficientZeroPolicy(Policy):
                     'pred_value': pred_values[i],
                     'policy_logits': policy_logits[i],
                 }
+        return output
 
+
+
+    def _forward_eval(self, data: torch.Tensor, action_mask: list, to_play: -1, ready_env_id=None):
+        """
+         Overview:
+             The forward function for evaluating the current policy in eval mode. Use model to execute MCTS search.
+             Choosing the action with the highest value (argmax) rather than sampling during the eval mode.
+         Arguments:
+             - data (:obj:`torch.Tensor`): The input data, i.e. the observation.
+             - action_mask (:obj:`list`): The action mask, i.e. the action that cannot be selected.
+             - to_play (:obj:`int`): The player to play.
+             - ready_env_id (:obj:`list`): The id of the env that is ready to collect.
+         Shape:
+             - data (:obj:`torch.Tensor`):
+                 - For Atari, :math:`(N, C*S, H, W)`, where N is the number of collect_env, C is the number of channels, \
+                     S is the number of stacked frames, H is the height of the image, W is the width of the image.
+                 - For lunarlander, :math:`(N, O)`, where N is the number of collect_env, O is the observation space size.
+             - action_mask: :math:`(N, action_space_size)`, where N is the number of collect_env.
+             - to_play: :math:`(N, 1)`, where N is the number of collect_env.
+             - ready_env_id: None
+         Returns:
+             - output (:obj:`Dict[int, Any]`): Dict type data, the keys including ``action``, ``distributions``, \
+                 ``visit_count_distribution_entropy``, ``value``, ``pred_value``, ``policy_logits``.
+         """
+        self._eval_model.eval()
+        active_eval_env_num = data.shape[0]
+        with torch.no_grad():
+            # data shape [B, S x C, W, H], e.g. {Tensor:(B, 12, 96, 96)}
+            network_output = self._eval_model.initial_inference(data)
+            latent_state_roots, value_prefix_roots, reward_hidden_state_roots, pred_values, policy_logits = ez_network_output_unpack(
+                network_output
+            )
+            z_latent_state_roots = latent_state_roots 
+            z_value_prefix_roots = value_prefix_roots 
+            z_reward_hidden_states_roots = reward_hidden_state_roots 
+            z_pred_values = pred_values 
+            z_policy_logits = policy_logits
+            # if not in training, obtain the scalars of the value/reward
+            pred_values = self.inverse_scalar_transform_handle(pred_values).detach().cpu().numpy()  # shape（B, 1）
+            latent_state_roots = latent_state_roots.detach().cpu().numpy()
+            reward_hidden_state_roots = (
+                reward_hidden_state_roots[0].detach().cpu().numpy(),
+                reward_hidden_state_roots[1].detach().cpu().numpy()
+            )
+            policy_logits = policy_logits.detach().cpu().numpy().tolist()  # list shape（B, A）
+            legal_actions = [
+                [-1 for _ in range(self._cfg.model.num_of_sampled_actions)] for _ in range(active_eval_env_num)
+            ]
+            # cpp mcts_tree
+            roots = MCTSCtree.roots(
+                active_eval_env_num, legal_actions, self._cfg.model.action_space_size,
+                self._cfg.model.num_of_sampled_actions, self._cfg.model.continuous_action_space
+            )
+            with torch.no_grad():
+                expert_frame = data
+                expert_latent_action = self._collect_model.get_expert_action(expert_frame)
+                device = expert_latent_action.device
+                expert_latent_action = torch.clamp(
+                    expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
+                expert_latent_action = torch.arctanh(expert_latent_action)
+                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
+            roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
+            roots_visit_count_distributions = roots.get_distributions()
+            roots_values = roots.get_values()  # shape: {list: batch_size}
+            roots_sampled_actions = roots.get_sampled_actions()
+            data_id = [i for i in range(active_eval_env_num)]
+            output = {i: None for i in data_id}
+            if ready_env_id is None:
+                ready_env_id = np.arange(active_eval_env_num)
+            optimal_action_list = []
+            for i, env_id in enumerate(ready_env_id):
+                distributions, value = roots_visit_count_distributions[i], roots_values[i]
+                root_sampled_actions = np.array([action for action in roots_sampled_actions[i]])
+                action, visit_count_distribution_entropy = select_action(
+                    distributions, temperature=1, deterministic=True
+                )
+                action = np.array(roots_sampled_actions[i][action])             
+                now_action = action  
+                action = {} 
+                action[0] = now_action 
+                action[1] = now_action
+                optimal_action_list.append(now_action)
+                output[env_id] = {
+                    'action': action,
+                    'distributions': distributions,
+                    'root_sampled_actions': root_sampled_actions,
+                    'visit_count_distribution_entropy': visit_count_distribution_entropy,
+                    'value': value,
+                    'pred_value': pred_values[i],
+                    'policy_logits': policy_logits[i],
+                }
+            optimal_action_array = np.array(optimal_action_list)
+            optimal_action_tensor = torch.from_numpy(optimal_action_array).to(self._cfg.device)
+            
+            network_dynamic_output = self._eval_model.recurrent_inference(
+                z_latent_state_roots, z_reward_hidden_states_roots,optimal_action_tensor
+            )
+            latent_state, value_prefix, reward_hidden_state, value, policy_logits = ez_network_output_unpack(
+                network_dynamic_output
+            )            
+            pred_values = self.inverse_scalar_transform_handle(value).detach().cpu().numpy()  # shape（B, 1）
+            value_prefix = self.inverse_scalar_transform_handle(value_prefix).detach().cpu().numpy() 
+            value_prefix = value_prefix.tolist()
+            value_prefix = value_prefix[0]
+            latent_state_roots = latent_state.detach().cpu().numpy()
+            reward_hidden_state_roots = (
+                reward_hidden_state[0].detach().cpu().numpy(),
+                reward_hidden_state[1].detach().cpu().numpy()
+            )
+            policy_logits = policy_logits.detach().cpu().numpy().tolist()  # list shape（B, A）
+            legal_actions = [
+                [-1 for _ in range(self._cfg.model.num_of_sampled_actions)] for _ in range(active_eval_env_num)
+            ]
+            # cpp mcts_tree
+            roots = MCTSCtree.roots(
+                active_eval_env_num, legal_actions, self._cfg.model.action_space_size,
+                self._cfg.model.num_of_sampled_actions, self._cfg.model.continuous_action_space
+            )
+            roots.prepare_no_noise(value_prefix, policy_logits, to_play)
+            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)            
+            roots_visit_count_distributions = roots.get_distributions()
+            roots_values = roots.get_values()  # shape: {list: batch_size}
+            roots_sampled_actions = roots.get_sampled_actions()
+            data_id = [i for i in range(active_eval_env_num)]
+            if ready_env_id is None:
+                ready_env_id = np.arange(active_eval_env_num)
+            for i, env_id in enumerate(ready_env_id):
+                distributions, value = roots_visit_count_distributions[i], roots_values[i]
+                root_sampled_actions = np.array([action for action in roots_sampled_actions[i]])
+                action, visit_count_distribution_entropy = select_action(
+                    distributions, temperature=1, deterministic=True
+                )
+                action = np.array(roots_sampled_actions[i][action])             
+                now_action = action  
+                output[env_id]['action'][1] = now_action
         return output
 
     def _monitor_vars_learn(self) -> List[str]:
