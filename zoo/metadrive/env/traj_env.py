@@ -229,8 +229,19 @@ class MetaDriveTrajEnv(BaseEnv):
             one_side_class_vae=False,
             steer_rate_constrain_value=0.5,
         )
+        self._traj_decoder2 = VaeDecoder(
+            embedding_dim = 64,
+            h_dim = 64,
+            latent_dim = 3,
+            seq_len = 10,
+            dt = 0.1,
+            traj_control_mode = 'acc',
+            one_side_class_vae=False,
+            steer_rate_constrain_value=0.3,
+        )
         # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))
         self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+        self._traj_decoder2.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
 
     @property
     def observation_space(self):
@@ -279,15 +290,41 @@ class MetaDriveTrajEnv(BaseEnv):
             latent_action = torch.from_numpy(raw_actions[1])
             latent_action = latent_action.unsqueeze(0).to(torch.float32)
             with torch.no_grad():
-                traj = self._traj_decoder(latent_action, init_state)
-            # init_state = init_state[:,:4]
-            # traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
+                traj = self._traj_decoder2(latent_action, init_state)
+            valid_traj = traj 
             traj = traj[0,:,:2]
             traj_cpu = traj.detach().to('cpu').numpy()
             rbt_state = init_state_0[0,:3].detach().to('cpu').numpy()
             addition_actions = self.convert_waypoint_list_coord(traj_cpu, rbt_state)
             # addition_actions = traj_cpu
             actions = np.concatenate((actions, addition_actions), axis=0) 
+
+            init_state_0 = valid_traj[:,-1]
+            init_state = torch.zeros_like(init_state_0)
+            init_state[0,3] = init_state_0[0,3]
+            
+            latent_action = torch.from_numpy(raw_actions[2])
+            latent_action = latent_action.unsqueeze(0).to(torch.float32)
+            with torch.no_grad():
+                traj = self._traj_decoder2(latent_action, init_state)
+            valid_traj = traj 
+            traj = traj[0,:,:2]
+            traj_cpu = traj.detach().to('cpu').numpy()
+            rbt_state = np.array([0.0,0.0,0.0])
+            rbt_state[:2] = actions[20, :]
+            last_state = actions[-2, :]
+            diff = actions[-1, :] - actions[-2, :]
+            theta = np.arctan2(diff[1],diff[0])
+            rbt_state[2] = theta
+            addition_actions = self.convert_waypoint_list_coord(traj_cpu, rbt_state)
+            # addition_actions = traj_cpu
+            actions = np.concatenate((actions, addition_actions), axis=0) 
+
+
+
+
+
+
         macro_actions = self._preprocess_macro_waypoints(actions)
         step_infos = self._step_macro_simulator(macro_actions)
         o, r, d, i = self._get_step_return(actions, step_infos)
