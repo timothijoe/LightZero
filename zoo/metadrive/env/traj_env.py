@@ -321,7 +321,26 @@ class MetaDriveTrajEnv(BaseEnv):
             actions = np.concatenate((actions, addition_actions), axis=0) 
 
 
-
+            init_state_0 = valid_traj[:,-1]
+            init_state = torch.zeros_like(init_state_0)
+            init_state[0,3] = init_state_0[0,3]
+            
+            latent_action = torch.from_numpy(raw_actions[3])
+            latent_action = latent_action.unsqueeze(0).to(torch.float32)
+            with torch.no_grad():
+                traj = self._traj_decoder2(latent_action, init_state)
+            valid_traj = traj 
+            traj = traj[0,:,:2]
+            traj_cpu = traj.detach().to('cpu').numpy()
+            rbt_state = np.array([0.0,0.0,0.0])
+            rbt_state[:2] = actions[30, :]
+            last_state = actions[-2, :]
+            diff = actions[-1, :] - actions[-2, :]
+            theta = np.arctan2(diff[1],diff[0])
+            rbt_state[2] = theta
+            addition_actions = self.convert_waypoint_list_coord(traj_cpu, rbt_state)
+            # addition_actions = traj_cpu
+            actions = np.concatenate((actions, addition_actions), axis=0) 
 
 
 

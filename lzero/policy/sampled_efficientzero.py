@@ -1315,6 +1315,63 @@ class SampledEfficientZeroPolicy(Policy):
                 now_action = action  
                 optimal_action_list.append(now_action)
                 output[env_id]['action'][2] = now_action
+            
+            # Fourth times
+
+            optimal_action_array = np.array(optimal_action_list)
+            optimal_action_tensor = torch.from_numpy(optimal_action_array).to(self._cfg.device)
+            
+            network_dynamic_output = self._eval_model.recurrent_inference(
+                z_latent_state_roots, z_reward_hidden_states_roots,optimal_action_tensor
+            )
+            latent_state, value_prefix, reward_hidden_state, value, policy_logits = ez_network_output_unpack(
+                network_dynamic_output
+            ) 
+            z_latent_state_roots = latent_state 
+            z_value_prefix_roots = value_prefix 
+            z_reward_hidden_states_roots = reward_hidden_state 
+            #z_pred_values = pred_values 
+            z_policy_logits = policy_logits  
+
+            pred_values = self.inverse_scalar_transform_handle(value).detach().cpu().numpy()  # shape（B, 1）
+            value_prefix = self.inverse_scalar_transform_handle(value_prefix).detach().cpu().numpy() 
+            value_prefix = value_prefix.tolist()
+            value_prefix = value_prefix[0]
+            latent_state_roots = latent_state.detach().cpu().numpy()
+            reward_hidden_state_roots = (
+                reward_hidden_state[0].detach().cpu().numpy(),
+                reward_hidden_state[1].detach().cpu().numpy()
+            )
+            policy_logits = policy_logits.detach().cpu().numpy().tolist()  # list shape（B, A）
+            legal_actions = [
+                [-1 for _ in range(self._cfg.model.num_of_sampled_actions)] for _ in range(active_eval_env_num)
+            ]
+            # cpp mcts_tree
+            roots = MCTSCtree.roots(
+                active_eval_env_num, legal_actions, self._cfg.model.action_space_size,
+                self._cfg.model.num_of_sampled_actions, self._cfg.model.continuous_action_space
+            )
+            roots.prepare_no_noise(value_prefix, policy_logits, to_play)
+            self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)            
+            roots_visit_count_distributions = roots.get_distributions()
+            roots_values = roots.get_values()  # shape: {list: batch_size}
+            roots_sampled_actions = roots.get_sampled_actions()
+            data_id = [i for i in range(active_eval_env_num)]
+            optimal_action_list = []
+            if ready_env_id is None:
+                ready_env_id = np.arange(active_eval_env_num)
+            for i, env_id in enumerate(ready_env_id):
+                distributions, value = roots_visit_count_distributions[i], roots_values[i]
+                root_sampled_actions = np.array([action for action in roots_sampled_actions[i]])
+                action, visit_count_distribution_entropy = select_action(
+                    distributions, temperature=1, deterministic=True
+                )
+                action = np.array(roots_sampled_actions[i][action])             
+                now_action = action  
+                optimal_action_list.append(now_action)
+                output[env_id]['action'][3] = now_action
+
+
         return output
 
     def _monitor_vars_learn(self) -> List[str]:

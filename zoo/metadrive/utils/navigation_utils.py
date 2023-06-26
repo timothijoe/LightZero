@@ -29,7 +29,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         self._additional_trajs = additional_trajs
         self.seq_traj_len = seq_traj_len 
         if additional_trajs:
-            self.seq_traj_len = self.seq_traj_len *3 
+            self.seq_traj_len = self.seq_traj_len * 4
         self.enable_u_turn = enable_u_turn 
         self.u_turn_case = False
         self.should_redraw = False 
