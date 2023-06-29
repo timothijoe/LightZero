@@ -9,7 +9,7 @@ collector_env_num = 1
 n_episode = 8
 evaluator_env_num = 1
 num_simulations = 25
-update_per_collect = 200
+update_per_collect = 4
 batch_size = 16
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
@@ -35,6 +35,7 @@ pendulum_sampled_efficientzero_config = dict(
             show_seq_traj = False,
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
+            additional_trajs=False,
         ),
     ),
     policy=dict(
