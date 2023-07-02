@@ -689,6 +689,8 @@ class MetaDriveTrajEnv(BaseEnv):
             _, cost_infos[v_id] = self.cost_function(v_id)
             done = done_function_result or self.dones[v_id]
             self.dones[v_id] = done
+            if done:
+                obses['default_agent']['birdview'][:,:10, 4]=1.0
 
         should_done = engine_info.get(REPLAY_DONE, False
                                       ) or (self.config["horizon"] and self.episode_steps >= self.config["horizon"])
