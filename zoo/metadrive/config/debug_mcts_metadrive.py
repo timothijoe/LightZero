@@ -31,6 +31,7 @@ pendulum_sampled_efficientzero_config = dict(
         manager=dict(shared_memory=False, ),
         metadrive=dict(
             use_render=False,
+            additional_trajs=False,
             traffic_density=0.30,  # Density of vehicles occupying the roads, range in [0,1]
             show_seq_traj = False,
             #map='XSOS',  # Int or string: an easy way to fill map_config
@@ -67,6 +68,11 @@ pendulum_sampled_efficientzero_config = dict(
         replay_buffer_size=int(64),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
+        td_steps = 3,
+        lstm_horizon_len = 1, 
+        normalize_prob_of_sampled_actions = True,
+        num_unroll_steps = 2,
+        use_priority=False,
     ),
 )
 pendulum_sampled_efficientzero_config = EasyDict(pendulum_sampled_efficientzero_config)

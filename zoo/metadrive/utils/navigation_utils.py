@@ -29,7 +29,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         self._additional_trajs = additional_trajs
         self.seq_traj_len = seq_traj_len 
         if additional_trajs:
-            self.seq_traj_len = self.seq_traj_len * 4
+            self.seq_traj_len = self.seq_traj_len *4 
         self.enable_u_turn = enable_u_turn 
         self.u_turn_case = False
         self.should_redraw = False 
@@ -38,7 +38,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
 
         #self.drawd = False
         
-        self.LINE_TO_DEST_HEIGHT += 4
+        self.LINE_TO_DEST_HEIGHT += -0.2
         self.activate_car_pos_marker = False
 
     def _init_trajs(self):
@@ -128,7 +128,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             #lines.moveTo(panda_position(wp_list[i][0], self.LINE_TO_DEST_HEIGHT+4))
             lines.moveTo(panda_position((wp_list[i][0], wp_list[i][1]), self.LINE_TO_DEST_HEIGHT))
             lines.drawTo(panda_position((wp_list[i+1][0], wp_list[i+1][1]), self.LINE_TO_DEST_HEIGHT))
-            lines.setThickness(2)
+            lines.setThickness(40)
             self.__dict__['traj_{}'.format(i)].removeNode()
             self.__dict__['traj_{}'.format(i)] = NodePath(lines.create(False))
             self.__dict__['traj_{}'.format(i)].hide(CamMask.Shadow | CamMask.RgbCam)
