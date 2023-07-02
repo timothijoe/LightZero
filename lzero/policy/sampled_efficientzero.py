@@ -142,6 +142,7 @@ class SampledEfficientZeroPolicy(Policy):
         policy_entropy_loss_weight=0,
         # (float) The weight of ssl (self-supervised learning) loss.
         ssl_loss_weight=2,
+        expert_weight = 5.0,
         # (bool) Whether to use the cosine learning rate decay.
         cos_lr_scheduler=False,
         # (bool) Whether to use piecewise constant learning rate decay.
@@ -505,7 +506,7 @@ class SampledEfficientZeroPolicy(Policy):
         weighted_total_loss = (weights * loss).mean()
         # use_expert = True 
         if self._cfg.use_expert:
-            weighted_total_loss += expert_loss.mean() * 5 * 10
+            weighted_total_loss += expert_loss.mean() * self._cfg.expert_weight
         weighted_total_loss.register_hook(lambda grad: grad * gradient_scale)
         self._optimizer.zero_grad()
         weighted_total_loss.backward()
@@ -698,9 +699,9 @@ class SampledEfficientZeroPolicy(Policy):
 
         if self._cfg.normalize_prob_of_sampled_actions:
             # normalize the prob of sampled actions
-            prob_sampled_actions_norm = torch.exp(log_prob_sampled_actions) / torch.exp(log_prob_sampled_actions).sum(
+            prob_sampled_actions_norm = torch.exp(log_prob_sampled_actions) / (torch.exp(log_prob_sampled_actions).sum(
                 -1
-            ).unsqueeze(-1).repeat(1, log_prob_sampled_actions.shape[-1]).detach()
+            )+1e-6).unsqueeze(-1).repeat(1, log_prob_sampled_actions.shape[-1]).detach()
             # the above line is equal to the following line.
             # prob_sampled_actions_norm = F.normalize(torch.exp(log_prob_sampled_actions), p=1., dim=-1, eps=1e-6)
             log_prob_sampled_actions = torch.log(prob_sampled_actions_norm + 1e-6)
@@ -906,9 +907,10 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_latent_action = torch.arctanh(expert_latent_action)
                 expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
 
-
-            roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
-            #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
+            if self._cfg.use_expert:
+                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            else:
+                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
             self._mcts_collect.search(
                 roots, self._collect_model, latent_state_roots, reward_hidden_state_roots, to_play
             )
@@ -1050,7 +1052,10 @@ class SampledEfficientZeroPolicy(Policy):
 
             #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
             #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
-            roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            if self._cfg.use_expert:
+                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            else:
+                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
 
             roots_visit_count_distributions = roots.get_distributions(

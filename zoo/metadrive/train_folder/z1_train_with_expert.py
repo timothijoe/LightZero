@@ -9,21 +9,21 @@ SEQ_TRAJ_LEN = 10
 
 continuous_action_space = True
 K = 10  # num_of_sampled_actions
-collector_env_num = 8
-n_episode = 8
-evaluator_env_num = 8
+collector_env_num = 16
+n_episode = 16
+evaluator_env_num = 16
 num_simulations = 50
-update_per_collect = 100
+update_per_collect = 200
 batch_size = 64 #256
 max_env_step = int(1e6)
-reanalyze_ratio = 0.
+reanalyze_ratio = 1.0
 # ==============================================================
 # end of the most frequently changed config specified by the user
 # ==============================================================
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_sez_ctree/taec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
+    f'data_sez_ctree/t1aec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
     env=dict(
         env_name='taec_mcts',
         continuous=True,
@@ -80,9 +80,21 @@ pendulum_sampled_efficientzero_config = dict(
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
         eval_freq=int(2e3),
-        replay_buffer_size=int(4e4),  # the size/capacity of replay_buffer, in the terms of transitions.
+        replay_buffer_size=int(3e4),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
+        discount_factor=0.9,
+        td_steps = 2,
+        num_unroll_steps = 2,
+        lstm_horizon_len = 2,
+        normalize_prob_of_sampled_actions = True,
+        learn=dict(
+            learner=dict(
+                hook=dict(
+                    save_ckpt_after_iter=500000,
+                ),
+            ),
+        ),
     ),
 )
 pendulum_sampled_efficientzero_config = EasyDict(pendulum_sampled_efficientzero_config)

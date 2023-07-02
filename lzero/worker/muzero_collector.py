@@ -277,6 +277,7 @@ class MuZeroCollector(ISerialCollector):
         Returns:
             - return_data (:obj:`List`): A list containing collected game_segments
         """
+        self.game_segment_pool.clear()
         if n_episode is None:
             if self._default_n_episode is None:
                 raise RuntimeError("Please specify collect n_episode")

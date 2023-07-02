@@ -23,7 +23,7 @@ reanalyze_ratio = 1.0
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_sez_ctree/t2aec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
+    f'data_sez_ctree/t1aec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
     env=dict(
         env_name='taec_mcts',
         continuous=True,
@@ -66,7 +66,8 @@ pendulum_sampled_efficientzero_config = dict(
             image_channel=5,
         ),
         cuda=True,
-        use_expert=False,
+        use_expert=True,
+        expert_weight = 20,
         env_type='not_board_games',
         game_segment_length=50,
         update_per_collect=update_per_collect,
