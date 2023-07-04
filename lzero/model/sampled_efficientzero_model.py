@@ -185,6 +185,7 @@ class SampledEfficientZeroModel(nn.Module):
             bound_type: str = None,
             norm_type: str = 'BN',
             discrete_action_encoding_type: str = 'one_hot',
+            local_encoder_ckpt_path: str = 'encoder_60_model',
             *args,
             **kwargs,
     ):
@@ -369,6 +370,8 @@ class SampledEfficientZeroModel(nn.Module):
         import os 
         pwd = os.getcwd()
         expert_encoder_ckpt_path = pwd + '/model_path/encoder_60_model'
+        expert_encoder_ckpt_path = pwd + '/model_path/' + local_encoder_ckpt_path
+        # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         self.expert_encoder.load_state_dict(checkpoint)
         print('zt')
