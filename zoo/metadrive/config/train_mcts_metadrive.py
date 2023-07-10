@@ -31,7 +31,7 @@ pendulum_sampled_efficientzero_config = dict(
         manager=dict(shared_memory=False, ),
         metadrive=dict(
             use_render=False,
-            traffic_density=0.10,  # Density of vehicles occupying the roads, range in [0,1]
+            traffic_density=0.15,  # Density of vehicles occupying the roads, range in [0,1]
             map='XSOS',  # Int or string: an easy way to fill map_config
             horizon=4000,  # Max step number
             driving_reward=1.0,  # Reward to encourage agent to move forward.
@@ -39,7 +39,7 @@ pendulum_sampled_efficientzero_config = dict(
             use_lateral_reward=False,  # reward for lane keeping
             out_of_road_penalty=40.0,  # Penalty to discourage driving out of road
             crash_vehicle_penalty=40.0,  # Penalty to discourage collision
-            decision_repeat=20,  # Reciprocal of decision frequency
+            decision_repeat=10,  # Reciprocal of decision frequency
             out_of_route_done=True,  # Game over if driving out of road
         ),
     ),
