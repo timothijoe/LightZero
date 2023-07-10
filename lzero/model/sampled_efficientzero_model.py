@@ -555,7 +555,7 @@ class DynamicsNetwork(nn.Module):
             activation=self.activation,
             norm_type=self.norm_type,
             output_activation=nn.Identity(),
-            output_norm_type=None,
+            output_norm=False,
             last_linear_layer_init_zero=last_linear_layer_init_zero
         )
 
@@ -698,7 +698,7 @@ class PredictionNetwork(nn.Module):
             activation=activation,
             norm_type=self.norm_type,
             output_activation=nn.Identity(),
-            output_norm_type=None,
+            output_norm=False,
             last_linear_layer_init_zero=last_linear_layer_init_zero
         )
 

@@ -53,7 +53,7 @@ pendulum_sampled_efficientzero_config = dict(
             model_type='conv',  # options={'mlp', 'conv'}
             lstm_hidden_size=128,
             latent_state_dim=128,
-            downsample = True,
+            # downsample = True,
             image_channel=5,
         ),
         cuda=True,
