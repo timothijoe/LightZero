@@ -5,12 +5,12 @@ from easydict import EasyDict
 # ==============================================================
 continuous_action_space = True
 K = 20  # num_of_sampled_actions
-collector_env_num = 8
-n_episode = 8
+collector_env_num = 1
+n_episode = 1
 evaluator_env_num = 3
 num_simulations = 50
 update_per_collect = 200
-batch_size = 256
+batch_size = 16
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
 # ==============================================================
@@ -53,7 +53,7 @@ pendulum_sampled_efficientzero_config = dict(
             model_type='conv',  # options={'mlp', 'conv'}
             lstm_hidden_size=128,
             latent_state_dim=128,
-            # downsample = True,
+            downsample = True,
             image_channel=5,
         ),
         cuda=True,
