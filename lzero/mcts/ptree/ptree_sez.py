@@ -360,7 +360,10 @@ class Roots:
             if to_play is None:
                 self.roots[i].expand(-1, 0, i, value_prefixs[i], policies[i])
             else:
-                self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i], expert_latent_action[i])
+                if expert_latent_action is None:
+                    self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i])
+                else:
+                    self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i], expert_latent_action[i])
             self.roots[i].add_exploration_noise(root_noise_weight, noises[i])
 
             self.roots[i].visit_count += 1

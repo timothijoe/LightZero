@@ -186,8 +186,6 @@ class SampledEfficientZeroModel(nn.Module):
             norm_type: str = 'BN',
             discrete_action_encoding_type: str = 'one_hot',
             local_encoder_ckpt_path: str = 'encoder_60_model',
-            use_gmm=False,
-            gmm_num=3,
             *args,
             **kwargs,
     ):

@@ -52,6 +52,7 @@ pendulum_sampled_efficientzero_config = dict(
         ),
         cuda=True,
         env_type='not_board_games',
+        mcts_ctree=False,
         game_segment_length=50,
         update_per_collect=update_per_collect,
         batch_size=batch_size,
