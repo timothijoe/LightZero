@@ -18,6 +18,7 @@ from lzero.model import ImageTransforms
 from lzero.policy import scalar_transform, InverseScalarTransform, cross_entropy_loss, phi_transform, \
     DiscreteSupport, to_torch_float_tensor, ez_network_output_unpack, select_action, negative_cosine_similarity, prepare_obs, \
     configure_optimizers
+from torch.distributions import MixtureSameFamily, MultivariateNormal, Normal, Independent, Categorical
 
 
 @POLICY_REGISTRY.register('sampled_efficientzero')
@@ -617,6 +618,113 @@ class SampledEfficientZeroPolicy(Policy):
                 'total_grad_norm_before_clip': total_grad_norm_before_clip
             }
 
+    def _calculate_policy_loss_cont1(
+            self, policy_loss: torch.Tensor, policy_logits: torch.Tensor, target_policy: torch.Tensor,
+            mask_batch: torch.Tensor, child_sampled_actions_batch: torch.Tensor, unroll_step: int
+    ) -> Tuple[torch.Tensor]:
+        """
+        Overview:
+            Calculate the policy loss for continuous action space.
+        Arguments:
+            - policy_loss (:obj:`torch.Tensor`): The policy loss tensor.
+            - policy_logits (:obj:`torch.Tensor`): The policy logits tensor.
+            - target_policy (:obj:`torch.Tensor`): The target policy tensor.
+            - mask_batch (:obj:`torch.Tensor`): The mask tensor.
+            - child_sampled_actions_batch (:obj:`torch.Tensor`): The child sampled actions tensor.
+            - unroll_step (:obj:`int`): The unroll step.
+        Returns:
+            - policy_loss (:obj:`torch.Tensor`): The policy loss tensor.
+            - policy_entropy (:obj:`torch.Tensor`): The policy entropy tensor.
+            - policy_entropy_loss (:obj:`torch.Tensor`): The policy entropy loss tensor.
+            - target_policy_entropy (:obj:`torch.Tensor`): The target policy entropy tensor.
+            - target_sampled_actions (:obj:`torch.Tensor`): The target sampled actions tensor.
+            - mu (:obj:`torch.Tensor`): The mu tensor.
+            - sigma (:obj:`torch.Tensor`): The sigma tensor.
+        """
+        (mu, sigma
+         ) = policy_logits[:, :self._cfg.model.action_space_size], policy_logits[:, -self._cfg.model.action_space_size:]
+        device = sigma.device
+        sigma = torch.clamp(
+                sigma, torch.exp(torch.tensor(-4.0)).to(device), torch.exp(torch.tensor(2.0)).to(device)
+            )
+        dist = Independent(Normal(mu, sigma), 1)
+
+        # take the init hypothetical step k=unroll_step
+        target_normalized_visit_count = target_policy[:, unroll_step]
+
+        # Note: The target_policy_entropy is just for debugging.
+        target_normalized_visit_count_masked = torch.index_select(
+            target_normalized_visit_count, 0,
+            torch.nonzero(mask_batch[:, unroll_step]).squeeze(-1)
+        )
+        target_dist = Categorical(target_normalized_visit_count_masked)
+        target_policy_entropy = target_dist.entropy().mean()
+
+        # shape: (batch_size, num_unroll_steps, num_of_sampled_actions, action_dim, 1) -> (batch_size,
+        # num_of_sampled_actions, action_dim) e.g. (4, 6, 20, 2, 1) ->  (4, 20, 2)
+        target_sampled_actions = child_sampled_actions_batch[:, unroll_step].squeeze(-1)
+
+        policy_entropy = dist.entropy().mean()
+        policy_entropy_loss = -dist.entropy()
+
+        # Project the sampled-based improved policy back onto the space of representable policies. calculate KL
+        # loss (batch_size, num_of_sampled_actions) -> (4,20) target_normalized_visit_count is
+        # categorical distribution, the range of target_log_prob_sampled_actions is (-inf, 0), add 1e-6 for
+        # numerical stability.
+        target_log_prob_sampled_actions = torch.log(target_normalized_visit_count + 1e-6)
+        log_prob_sampled_actions = []
+        for k in range(self._cfg.model.num_of_sampled_actions):
+            # target_sampled_actions[:,i,:].shape: batch_size, action_dim -> 4,2
+            # dist.log_prob(target_sampled_actions[:,i,:]).shape: batch_size -> 4
+            # dist is normal distribution, the range of log_prob_sampled_actions is (-inf, inf)
+
+            # way 1:
+            # log_prob = dist.log_prob(target_sampled_actions[:, k, :])
+
+            # way 2: SAC-like
+            y = 1 - target_sampled_actions[:, k, :].pow(2)
+            device = target_sampled_actions.device
+
+            # NOTE: for numerical stability.
+            target_sampled_actions_clamped = torch.clamp(
+                target_sampled_actions[:, k, :], torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+            )
+            target_sampled_actions_before_tanh = torch.arctanh(target_sampled_actions_clamped)
+
+            # keep dimension for loss computation (usually for action space is 1 env. e.g. pendulum)
+            log_prob = dist.log_prob(target_sampled_actions_before_tanh).unsqueeze(-1)
+            log_prob = log_prob - torch.log(y + 1e-6).sum(-1, keepdim=True)
+            log_prob = log_prob.squeeze(-1)
+
+            log_prob_sampled_actions.append(log_prob)
+
+        # shape: (batch_size, num_of_sampled_actions) e.g. (4,20)
+        log_prob_sampled_actions = torch.stack(log_prob_sampled_actions, dim=-1)
+
+        if self._cfg.normalize_prob_of_sampled_actions:
+            # normalize the prob of sampled actions
+            prob_sampled_actions_norm = torch.exp(log_prob_sampled_actions) / (torch.exp(log_prob_sampled_actions).sum(
+                -1
+            )+1e-6).unsqueeze(-1).repeat(1, log_prob_sampled_actions.shape[-1]).detach()
+            # the above line is equal to the following line.
+            # prob_sampled_actions_norm = F.normalize(torch.exp(log_prob_sampled_actions), p=1., dim=-1, eps=1e-6)
+            log_prob_sampled_actions = torch.log(prob_sampled_actions_norm + 1e-6)
+
+        # NOTE: the +=.
+        if self._cfg.policy_loss_type == 'KL':
+            # KL divergence loss: sum( p* log(p/q) ) = sum( p*log(p) - p*log(q) )= sum( p*log(p)) - sum( p*log(q) )
+            policy_loss += (
+                torch.exp(target_log_prob_sampled_actions.detach()) *
+                (target_log_prob_sampled_actions.detach() - log_prob_sampled_actions)
+            ).sum(-1) * mask_batch[:, unroll_step]
+        elif self._cfg.policy_loss_type == 'cross_entropy':
+            # cross_entropy loss: - sum(p * log (q) )
+            policy_loss += -torch.sum(
+                torch.exp(target_log_prob_sampled_actions.detach()) * log_prob_sampled_actions, 1
+            ) * mask_batch[:, unroll_step]
+
+        return policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma
+
     def _calculate_policy_loss_cont(
             self, policy_loss: torch.Tensor, policy_logits: torch.Tensor, target_policy: torch.Tensor,
             mask_batch: torch.Tensor, child_sampled_actions_batch: torch.Tensor, unroll_step: int
@@ -642,6 +750,27 @@ class SampledEfficientZeroPolicy(Policy):
         """
         (mu, sigma
          ) = policy_logits[:, :self._cfg.model.action_space_size], policy_logits[:, -self._cfg.model.action_space_size:]
+        
+        
+        
+        gmm_num = self._cfg.model.gmm_num 
+        batch_size = policy_logits.shape[0]
+        event_shape = self._cfg.model.action_space_size
+        weights = policy_logits[:, 0:gmm_num]
+        #weights = torch.softmax(weights, dim=1)
+        means = policy_logits[:, gmm_num:(gmm_num+event_shape*gmm_num)].reshape(batch_size, gmm_num, event_shape)
+        stddevs = policy_logits[:, (gmm_num+event_shape*gmm_num):(gmm_num+2*event_shape*gmm_num)].reshape(batch_size, gmm_num, event_shape)
+        
+        
+        # 构建GMM的分量分布
+        component_distributions = Independent(Normal(means, stddevs), 1)
+        # 构建MixtureSameFamily对象
+        gmm = MixtureSameFamily(Categorical(weights), component_distributions)       
+        
+        
+        
+        
+        
         device = sigma.device
         sigma = torch.clamp(
                 sigma, torch.exp(torch.tensor(-4.0)).to(device), torch.exp(torch.tensor(2.0)).to(device)

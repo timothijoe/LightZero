@@ -821,5 +821,7 @@ class PredictionNetwork(nn.Module):
             if not self.use_gmm:
                 policy = torch.cat([policy['mu'], policy['sigma']], dim=-1)
             else:
-                policy = torch.cat([alpha_weights['pred'], policy['mu'], policy['sigma']], dim=-1)
+                alpha_weights_normal =  torch.softmax(alpha_weights['pred'], dim=1)
+                policy = torch.cat([alpha_weights_normal, policy['mu'], policy['sigma']], dim=-1)
+                # policy = torch.cat([alpha_weights['pred'], policy['mu'], policy['sigma']], dim=-1)
         return policy, value
