@@ -284,6 +284,8 @@ class SampledEfficientZeroModel(nn.Module):
         self.bound_type = bound_type
         self.norm_type = norm_type
         self.num_of_sampled_actions = num_of_sampled_actions
+        self.use_gmm = use_gmm
+        self.gmm_num = gmm_num
 
         flatten_output_size_for_reward_head = (
             (reward_head_channels * math.ceil(observation_shape[1] / 16) *
@@ -343,6 +345,8 @@ class SampledEfficientZeroModel(nn.Module):
             fixed_sigma_value=self.fixed_sigma_value,
             bound_type=self.bound_type,
             norm_type=self.norm_type,
+            use_gmm = self.use_gmm,
+            gmm_num = self.gmm_num,
         )
 
         if self.self_supervised_learning_loss:
@@ -653,6 +657,8 @@ class PredictionNetwork(nn.Module):
             fixed_sigma_value: float = 0.3,
             bound_type: str = None,
             norm_type: str = 'BN',
+            use_gmm = False,
+            gmm_num = 3,
     ):
         """
         Overview:
@@ -694,6 +700,8 @@ class PredictionNetwork(nn.Module):
         self.fixed_sigma_value = fixed_sigma_value
         self.bound_type = bound_type
         self.activation = activation
+        self.use_gmm = use_gmm 
+        self.gmm_num = gmm_num
 
         self.resblocks = nn.ModuleList(
             [
@@ -738,16 +746,32 @@ class PredictionNetwork(nn.Module):
 
         # sampled related core code
         if self.continuous_action_space:
-            self.fc_policy_head = ReparameterizationHead(
-                input_size=self.flatten_output_size_for_policy_head,
-                output_size=action_space_size,
-                layer_num=len(fc_policy_layers) + 1,
-                sigma_type=self.sigma_type,
-                fixed_sigma_value=self.fixed_sigma_value,
-                activation=nn.ReLU(),
-                norm_type=None,
-                bound_type=self.bound_type
-            )
+            if self.use_gmm:
+                self.fc_policy_head = ReparameterizationHead(
+                    input_size=self.flatten_output_size_for_policy_head,
+                    output_size=action_space_size * self.gmm_num,
+                    layer_num=len(fc_policy_layers) + 1,
+                    sigma_type=self.sigma_type,
+                    fixed_sigma_value=self.fixed_sigma_value,
+                    activation=nn.ReLU(),
+                    norm_type=None,
+                    bound_type=self.bound_type
+                )
+                self.gmm_weight = RegressionHead(
+                    input_size=self.flatten_output_size_for_policy_head,
+                    output_size= self.gmm_num,
+                )
+            else:
+                self.fc_policy_head = ReparameterizationHead(
+                    input_size=self.flatten_output_size_for_policy_head,
+                    output_size=action_space_size,
+                    layer_num=len(fc_policy_layers) + 1,
+                    sigma_type=self.sigma_type,
+                    fixed_sigma_value=self.fixed_sigma_value,
+                    activation=nn.ReLU(),
+                    norm_type=None,
+                    bound_type=self.bound_type
+                )
         else:
             self.fc_policy_head = MLP(
                 in_channels=self.flatten_output_size_for_policy_head,
@@ -789,9 +813,13 @@ class PredictionNetwork(nn.Module):
         value = self.fc_value_head(value)
 
         # sampled related core code
+        if self.use_gmm:
+            alpha_weights = self.gmm_weight(policy)
         policy = self.fc_policy_head(policy)
 
         if self.continuous_action_space:
-            policy = torch.cat([policy['mu'], policy['sigma']], dim=-1)
-
+            if not self.use_gmm:
+                policy = torch.cat([policy['mu'], policy['sigma']], dim=-1)
+            else:
+                policy = torch.cat([alpha_weights['pred'], policy['mu'], policy['sigma']], dim=-1)
         return policy, value
