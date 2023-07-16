@@ -91,6 +91,16 @@ class Node:
                                        ), torch.tensor(policy_logits[-self.action_space_size:])
             self.mu = mu
             self.sigma = sigma
+
+            gmm_num = 3
+            batch_size = 1
+            event_shape = 3
+            weights = policy_logits[0:gmm_num]
+            means = policy_logits[gmm_num:(gmm_num+event_shape*gmm_num)]
+            means = np.array(means).reshape(gmm_num, event_shape)
+            stddevs = policy_logits[(gmm_num+event_shape*gmm_num):(gmm_num+2*event_shape*gmm_num)]
+            stddevs = np.array(stddevs).reshape(gmm_num, event_shape)
+            
             dist = Independent(Normal(mu, sigma), 1)
             # print(dist.batch_shape, dist.event_shape)
             num_remaining_action = self.num_of_sampled_actions 
