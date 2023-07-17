@@ -78,6 +78,7 @@ class SampledEfficientZeroPolicy(Policy):
         # (bool) Whether to use cuda in policy.
         cuda=True,
         use_expert = False,
+        multi_task_learning = False, # if true, we optimize policy to target policy and KL diverence to imitation learning result
         # (int) The number of environments used in collecting data.
         collector_env_num=8,
         # (int) The number of environments used in evaluating policy.
@@ -383,7 +384,8 @@ class SampledEfficientZeroPolicy(Policy):
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma = self._calculate_policy_loss_cont(
                 policy_loss, policy_logits, target_policy, mask_batch, child_sampled_actions_batch, unroll_step=0
             )
-            expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
+            if self._cfg.multi_task_learning:
+                expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
         else:
             """discrete action space"""
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -465,7 +467,8 @@ class SampledEfficientZeroPolicy(Policy):
                         expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
                     )
                     expert_latent_action = torch.arctanh(expert_latent_action)
-                expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
+                if self._cfg.multi_task_learning:
+                    expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
             else:
                 """discrete action space"""
                 policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -750,8 +753,10 @@ class SampledEfficientZeroPolicy(Policy):
         """
         (mu, sigma
          ) = policy_logits[:, :self._cfg.model.action_space_size], policy_logits[:, -self._cfg.model.action_space_size:]
-        
-        
+        device = sigma.device
+        sigma = torch.clamp(
+                sigma, torch.exp(torch.tensor(-4.0)).to(device), torch.exp(torch.tensor(2.0)).to(device)
+            )
         
         gmm_num = self._cfg.model.gmm_num 
         batch_size = policy_logits.shape[0]
@@ -760,22 +765,17 @@ class SampledEfficientZeroPolicy(Policy):
         #weights = torch.softmax(weights, dim=1)
         means = policy_logits[:, gmm_num:(gmm_num+event_shape*gmm_num)].reshape(batch_size, gmm_num, event_shape)
         stddevs = policy_logits[:, (gmm_num+event_shape*gmm_num):(gmm_num+2*event_shape*gmm_num)].reshape(batch_size, gmm_num, event_shape)
-        
+        stddevs = torch.clamp(
+                stddevs, torch.exp(torch.tensor(-4.0)).to(device), torch.exp(torch.tensor(2.0)).to(device)
+        )        
         
         # 构建GMM的分量分布
         component_distributions = Independent(Normal(means, stddevs), 1)
         # 构建MixtureSameFamily对象
-        gmm = MixtureSameFamily(Categorical(weights), component_distributions)       
+        gmm = MixtureSameFamily(Categorical(weights), component_distributions)      
+        dist = gmm 
         
-        
-        
-        
-        
-        device = sigma.device
-        sigma = torch.clamp(
-                sigma, torch.exp(torch.tensor(-4.0)).to(device), torch.exp(torch.tensor(2.0)).to(device)
-            )
-        dist = Independent(Normal(mu, sigma), 1)
+        #dist = Independent(Normal(mu, sigma), 1)
 
         # take the init hypothetical step k=unroll_step
         target_normalized_visit_count = target_policy[:, unroll_step]
@@ -792,8 +792,10 @@ class SampledEfficientZeroPolicy(Policy):
         # num_of_sampled_actions, action_dim) e.g. (4, 6, 20, 2, 1) ->  (4, 20, 2)
         target_sampled_actions = child_sampled_actions_batch[:, unroll_step].squeeze(-1)
 
-        policy_entropy = dist.entropy().mean()
-        policy_entropy_loss = -dist.entropy()
+        # policy_entropy = dist.entropy().mean()
+        # policy_entropy_loss = -dist.entropy()
+        policy_entropy = torch.tensor([0]).to(device)
+        policy_entropy_loss = torch.tensor([0]).to(device)
 
         # Project the sampled-based improved policy back onto the space of representable policies. calculate KL
         # loss (batch_size, num_of_sampled_actions) -> (4,20) target_normalized_visit_count is

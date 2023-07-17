@@ -10,7 +10,7 @@ import torch
 from torch.distributions import Normal, Independent
 
 from .minimax import MinMaxStats
-
+from torch.distributions import MixtureSameFamily, MultivariateNormal, Normal, Independent, Categorical
 
 class Node:
     """
@@ -96,12 +96,19 @@ class Node:
             batch_size = 1
             event_shape = 3
             weights = policy_logits[0:gmm_num]
+            weights = np.array(weights)
             means = policy_logits[gmm_num:(gmm_num+event_shape*gmm_num)]
             means = np.array(means).reshape(gmm_num, event_shape)
             stddevs = policy_logits[(gmm_num+event_shape*gmm_num):(gmm_num+2*event_shape*gmm_num)]
             stddevs = np.array(stddevs).reshape(gmm_num, event_shape)
+            weights = torch.from_numpy(weights)
+            means = torch.from_numpy(means)
+            stddevs = torch.from_numpy(stddevs)
+            component_distributions = Independent(Normal(means, stddevs), 1)
+            gmm = MixtureSameFamily(Categorical(weights), component_distributions) 
             
-            dist = Independent(Normal(mu, sigma), 1)
+            #dist = Independent(Normal(mu, sigma), 1)
+            dist = gmm
             # print(dist.batch_shape, dist.event_shape)
             num_remaining_action = self.num_of_sampled_actions 
             if expert_logits is not None:
