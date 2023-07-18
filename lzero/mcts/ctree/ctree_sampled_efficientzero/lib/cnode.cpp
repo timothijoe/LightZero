@@ -566,8 +566,40 @@ namespace tree
         for (int i = 0; i < gmm_num; ++i) {
             gmm.components[i].mean = {policy_logits.begin() + gmm_num + i * event_shape,
                                     policy_logits.begin() + gmm_num + (i + 1) * event_shape};
+
+            // std::cout <<"policy_logits_" << i ;
+            // std::cout <<" mu: (" ;
+            // for(auto m: gmm.components[i].mean){
+            //     std::cout << m <<", ";
+            // }
+            // std::cout <<")" << std::endl;
+
+              
             gmm.components[i].stddev = {policy_logits.begin() + gmm_num + gmm_num * event_shape + i * event_shape,
                                         policy_logits.begin() + gmm_num + gmm_num * event_shape + (i + 1) * event_shape};
+            // std::cout <<"policy_logits_" << i ;
+            // std::cout <<" sigma: (" ;
+            // float lower_bound = -4.0;
+            // float upper_bound = 4.0;
+            // for(auto &m: gmm.components[i].stddev){
+            //     std::cout << m <<", ";
+            // if (m < lower_bound) {
+            //     m = lower_bound;
+            // } else if (m > upper_bound) {
+            //     m = upper_bound;
+            // }
+            // }
+            // std::cout <<")" << std::endl;
+
+            float lower_bound = -4.0;
+            float upper_bound = 4.0;
+            for(auto &m: gmm.components[i].stddev){
+                if (m < lower_bound) {
+                    m = lower_bound;
+                } else if (m > upper_bound) {
+                    m = upper_bound;
+                }
+            }
         }
         this->action_space_size = event_shape;
 
