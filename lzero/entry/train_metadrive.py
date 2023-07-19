@@ -25,9 +25,9 @@ from ding.config import compile_config
 from ding.model.template import QAC, VAC
 from ding.policy import PPOPolicy
 from ding.worker import SampleSerialCollector, InteractionSerialEvaluator, BaseLearner
-from dizoo.metadrive.env.drive_env import MetaDrivePPOOriginEnv
+# from dizoo.metadrive.env.drive_env import MetaDrivePPOOriginEnv
 from zoo.metadrive.env.drive_wrapper import DriveEnvWrapper
-
+from zoo.metadrive.env.drive_env import MetaDrivePPOOriginEnv
 def wrapped_env(env_cfg, wrapper_cfg=None):
     return DriveEnvWrapper(MetaDrivePPOOriginEnv(env_cfg), wrapper_cfg)
 

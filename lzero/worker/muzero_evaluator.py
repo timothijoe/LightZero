@@ -455,6 +455,9 @@ class MuZeroEvaluator(ISerialEvaluator):
         """
         z_success_times = 0 
         z_fail_times = 0 
+        z_crash_vehicle_times = 0
+        # z_arrive_dest_times = 0
+        z_out_of_road_times = 0
         complete_ratio_list = []
         if n_episode is None:
             n_episode = self._default_n_episode
@@ -589,12 +592,19 @@ class MuZeroEvaluator(ISerialEvaluator):
                             z_success_times += 1 
                         else:
                             z_fail_times += 1 
+                        if t.info['crash_vehicle']:
+                            z_crash_vehicle_times += 1
+                        if t.info['out_of_road']:
+                            z_out_of_road_times += 1 
+                        # complete_ratio_list.append(float(t.info['complete_ratio']))
+                        
+                        
                             
                         if 'complete_ratio' in t.info:
                             complete_ratio_list.append(float(t.info['complete_ratio']))
                             
-                        if 'episode_info' in t.info:
-                            eval_monitor.update_info(env_id, t.info['episode_info'])
+                        # if 'episode_info' in t.info:
+                        #     eval_monitor.update_info(env_id, t.info['episode_info'])
                         eval_monitor.update_reward(env_id, reward)
                         self._logger.info(
                             "[EVALUATOR]env {} finish episode, final reward: {}, current episode: {}".format(
@@ -655,6 +665,8 @@ class MuZeroEvaluator(ISerialEvaluator):
         duration = self._timer.value
         episode_return = eval_monitor.get_episode_return()
         success_ratio = float(z_success_times) / float(z_success_times + z_fail_times)
+        crash_vehicle_ratio = float(z_crash_vehicle_times) / float(z_success_times + z_fail_times)
+        out_of_road_ratio = float(z_out_of_road_times) / float(z_success_times + z_fail_times)
         info = {
             'train_iter': train_iter,
             'ckpt_name': 'iteration_{}.pth.tar'.format(train_iter),
@@ -670,6 +682,8 @@ class MuZeroEvaluator(ISerialEvaluator):
             'reward_min': np.min(episode_return),
             'complete_ratio': np.mean(complete_ratio_list),
             'succ_rate': success_ratio,
+            'crash_vehicle_ratio': crash_vehicle_ratio,
+            'out_of_road_ratio': out_of_road_ratio,
             # 'each_reward': episode_return,
         }
         episode_info = eval_monitor.get_episode_info()

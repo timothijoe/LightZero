@@ -5,12 +5,12 @@ from easydict import EasyDict
 # ==============================================================
 continuous_action_space = True
 K = 20  # num_of_sampled_actions
-collector_env_num = 8
-n_episode = 8
-evaluator_env_num = 8
-num_simulations = 50
-update_per_collect = 200
-batch_size = 64
+collector_env_num = 1
+n_episode = 1
+evaluator_env_num = 1
+num_simulations = 5
+update_per_collect = 20
+batch_size = 16
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
 # ==============================================================
@@ -19,7 +19,7 @@ reanalyze_ratio = 0.
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_sez_ctree/muzero_metadrive{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
+    f'data_sez_ctree/pendulum_sampled_efficientzero_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
@@ -69,7 +69,7 @@ pendulum_sampled_efficientzero_config = dict(
         num_simulations=num_simulations,
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
-        eval_freq=int(2000),
+        eval_freq=int(20),
         replay_buffer_size=int(1e6),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
