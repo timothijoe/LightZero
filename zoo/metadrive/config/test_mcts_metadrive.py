@@ -30,7 +30,7 @@ pendulum_sampled_efficientzero_config = dict(
         n_evaluator_episode=evaluator_env_num,
         manager=dict(shared_memory=False, ),
         metadrive=dict(
-            use_render=True,
+            use_render=False, # True
             traffic_density=0.10,  # Density of vehicles occupying the roads, range in [0,1]
             map='XSOS',  # Int or string: an easy way to fill map_config
             horizon=4000,  # Max step number
@@ -112,5 +112,6 @@ if __name__ == "__main__":
         #from lzero.entry import train_muzero_with_gym_env as train_muzero
         from lzero.entry.eval_metadrive import eval_metadrive
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
+    zt_path = None 
 
     eval_metadrive([main_config, create_config], seed=0, model_path=zt_path)
