@@ -6,11 +6,11 @@ from easydict import EasyDict
 continuous_action_space = True
 K = 10  # num_of_sampled_actions
 collector_env_num = 1
-n_episode = 8
+n_episode = 1
 evaluator_env_num = 1
-num_simulations = 25
-update_per_collect = 200
-batch_size = 256
+num_simulations = 5
+update_per_collect = 2
+batch_size = 8
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
 # ==============================================================
@@ -30,10 +30,10 @@ pendulum_sampled_efficientzero_config = dict(
         n_evaluator_episode=evaluator_env_num,
         manager=dict(shared_memory=False, ),
         metadrive=dict(
-            use_render=True,
+            use_render=False,
             traffic_density=0.30,  # Density of vehicles occupying the roads, range in [0,1]
-            show_seq_traj = True,
-            map='XSOS',  # Int or string: an easy way to fill map_config
+            show_seq_traj = False,
+            #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
         ),
     ),
@@ -107,6 +107,6 @@ if __name__ == "__main__":
         from lzero.entry.eval_metadrive import eval_metadrive
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
     zt_path = None
-    #zt_path = '/home/PJLAB/puyuan/hoffung/taecrl_data/lz_ckpt/ckpt_best.pth.tar'
+    zt_path = '/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar'
 
     eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=5)

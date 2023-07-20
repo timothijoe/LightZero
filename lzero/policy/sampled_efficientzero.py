@@ -117,7 +117,7 @@ class SampledEfficientZeroPolicy(Policy):
         # learning_rate=0.003,  # lr for Adam optimizer
         # (float) Weight uniform initialization range in the last output layer
         init_w=3e-3,
-        normalize_prob_of_sampled_actions=False,
+        normalize_prob_of_sampled_actions=True,
         policy_loss_type='cross_entropy',  # options={'cross_entropy', 'KL'}
         # (int) Frequency of target network update.
         target_update_freq=100,
@@ -144,7 +144,7 @@ class SampledEfficientZeroPolicy(Policy):
         # (float) The weight of policy loss.
         policy_loss_weight=1,
         # (float) The weight of policy entropy loss.
-        policy_entropy_loss_weight=0,
+        policy_entropy_loss_weight=0.4,
         # (float) The weight of ssl (self-supervised learning) loss.
         ssl_loss_weight=2,
         expert_weight = 5.0,
@@ -181,6 +181,7 @@ class SampledEfficientZeroPolicy(Policy):
         root_dirichlet_alpha=0.3,
         # (float) The noise weight at the root node of the search tree.
         root_noise_weight=0.25,
+        margin_weight_scale = 0.1,
     )
 
     def default_model(self) -> Tuple[str, List[str]]:
@@ -774,6 +775,9 @@ class SampledEfficientZeroPolicy(Policy):
         # 构建MixtureSameFamily对象
         gmm = MixtureSameFamily(Categorical(weights), component_distributions)      
         dist = gmm 
+        means_margin = self.loss_margin(means)
+        weight_entropy = self.gmm_weight_entropy(weights)
+        margin_weight_scale = self._cfg.margin_weight_scale
         
         #dist = Independent(Normal(mu, sigma), 1)
 
@@ -794,9 +798,11 @@ class SampledEfficientZeroPolicy(Policy):
 
         # policy_entropy = dist.entropy().mean()
         # policy_entropy_loss = -dist.entropy()
-        policy_entropy = torch.tensor([0]).to(device)
-        policy_entropy_loss = torch.tensor([0]).to(device)
-
+        # policy_entropy = torch.tensor([0]).to(device)
+        # policy_entropy_loss = torch.tensor([0]).to(device)
+        policy_entropy = margin_weight_scale * means_margin + weight_entropy
+        policy_entropy = policy_entropy.mean()
+        policy_entropy_loss = margin_weight_scale * means_margin + weight_entropy
         # Project the sampled-based improved policy back onto the space of representable policies. calculate KL
         # loss (batch_size, num_of_sampled_actions) -> (4,20) target_normalized_visit_count is
         # categorical distribution, the range of target_log_prob_sampled_actions is (-inf, 0), add 1e-6 for
@@ -853,7 +859,8 @@ class SampledEfficientZeroPolicy(Policy):
                 torch.exp(target_log_prob_sampled_actions.detach()) * log_prob_sampled_actions, 1
             ) * mask_batch[:, unroll_step]
 
-        return policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma
+        # return policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma
+        return policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, means, stddevs
 
     def _calculate_policy_loss_disc(
             self, policy_loss: torch.Tensor, policy_logits: torch.Tensor, target_policy: torch.Tensor,
@@ -1363,3 +1370,21 @@ class SampledEfficientZeroPolicy(Policy):
     def _get_train_sample(self, data):
         # be compatible with DI-engine Policy class
         pass
+
+
+    def loss_margin(self, mu):
+        expanded_mu = mu.unsqueeze(2)
+        diff = expanded_mu - mu.unsqueeze(1)
+        loss_margin = torch.norm(diff, dim=3).sum(dim=(1, 2)) / (mu.size(1) * (mu.size(1) - 1))
+        margin_bias = torch.tensor([4.5], device=self._cfg.device)
+        #margin_entropy = margin_bias - loss_margin.mean()
+        margin_entropy = margin_bias - loss_margin
+        #return -loss_margin.mean()
+        return margin_entropy
+
+    def gmm_weight_entropy(self, weights, lambda_entropy=1.0):
+        entropy = torch.sum(-weights * torch.log(weights), dim=1)
+        #average_entropy = torch.mean(entropy)
+        average_entropy = entropy
+        return average_entropy     
+    

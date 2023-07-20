@@ -6,10 +6,10 @@ from easydict import EasyDict
 continuous_action_space = True
 K = 10  # num_of_sampled_actions
 collector_env_num = 1
-n_episode = 8
+n_episode = 1
 evaluator_env_num = 1
 num_simulations = 25
-update_per_collect = 200
+update_per_collect = 5
 batch_size = 8
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
@@ -50,6 +50,14 @@ pendulum_sampled_efficientzero_config = dict(
             downsample = True,
             image_channel=5,
         ),
+        learn=dict(
+            learner=dict(
+                hook=dict(
+                    load_ckpt_before_run='/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar',
+                ),
+            ),
+        ),        
+        
         cuda=True,
         env_type='not_board_games',
         mcts_ctree=True,
