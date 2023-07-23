@@ -30,7 +30,7 @@ pendulum_sampled_efficientzero_config = dict(
         n_evaluator_episode=evaluator_env_num,
         manager=dict(shared_memory=False, ),
         metadrive=dict(
-            use_render=False,
+            use_render=True,
             traffic_density=0.30,  # Density of vehicles occupying the roads, range in [0,1]
             show_seq_traj = False,
             #map='XSOS',  # Int or string: an easy way to fill map_config
@@ -50,17 +50,18 @@ pendulum_sampled_efficientzero_config = dict(
             downsample = True,
             image_channel=5,
         ),
-        learn=dict(
-            learner=dict(
-                hook=dict(
-                    load_ckpt_before_run='/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar',
-                ),
-            ),
-        ),        
+        # learn=dict(
+        #     learner=dict(
+        #         hook=dict(
+        #             load_ckpt_before_run='/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar',
+        #         ),
+        #     ),
+        # ),        
         
         cuda=True,
         env_type='not_board_games',
         mcts_ctree=True,
+        use_expert= True,
         game_segment_length=50,
         update_per_collect=update_per_collect,
         batch_size=batch_size,
@@ -72,7 +73,7 @@ pendulum_sampled_efficientzero_config = dict(
         num_simulations=num_simulations,
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
-        eval_freq=int(2e3),
+        eval_freq=int(10),
         replay_buffer_size=int(64),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,

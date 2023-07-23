@@ -373,19 +373,26 @@ class SampledEfficientZeroModel(nn.Module):
                 nn.Linear(self.pred_hid, self.pred_out),
             )
         self.expert_encoder = SpirlEncoder()
+        self.expert_encoder_wild = SpirlEncoder()
         import os 
         pwd = os.getcwd()
         expert_encoder_ckpt_path = pwd + '/model_path/encoder_60_model'
         expert_encoder_ckpt_path = pwd + '/model_path/' + local_encoder_ckpt_path
+        expert_encoder_wild_path = pwd + '/model_path/expcc_60_model'
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
+        checkpoint_wild = torch.load(expert_encoder_wild_path)
         self.expert_encoder.load_state_dict(checkpoint)
+        self.expert_encoder_wild.load_state_dict(checkpoint_wild)
         print('zt')
     
     def get_expert_action(self, obs):
         expert_action = self.expert_encoder(obs)
         return expert_action 
 
+    def get_expert_action_wild(self, obs):
+        expert_action = self.expert_encoder_wild(obs)
+        return expert_action 
 
     def initial_inference(self, obs: torch.Tensor) -> EZNetworkOutput:
         """

@@ -116,9 +116,9 @@ class Node:
                 sampled_actions_before_tanh = dist.sample(torch.tensor([num_remaining_action]))
                 expert_logits = np.array(expert_logits)
                 expert_actions_before_tanh = torch.from_numpy(expert_logits)
-                expert_actions_before_tanh = expert_actions_before_tanh.unsqueeze(0)
+                #expert_actions_before_tanh = expert_actions_before_tanh.unsqueeze(0)
                 sampled_actions_before_tanh = torch.cat([sampled_actions_before_tanh, expert_actions_before_tanh])
-                expert_sigma = torch.full_like(sigma, 0.8)
+                expert_sigma = torch.full_like(expert_actions_before_tanh, 0.8)
                 dist_expert = Independent(Normal(expert_actions_before_tanh, expert_sigma),1)
             else:
                 sampled_actions_before_tanh = dist.sample(torch.tensor([self.num_of_sampled_actions]))
@@ -385,7 +385,7 @@ class Roots:
 
             self.roots[i].visit_count += 1
 
-    def prepare_no_noise(self, value_prefixs: List[float], policies: List[List[float]], to_play: int = -1) -> None:
+    def prepare_no_noise(self, value_prefixs: List[float], policies: List[List[float]], to_play: int = -1, expert_latent_action: List[List[float]] = None) -> None:
         """
         Overview:
             Expand the roots without noise.
@@ -398,7 +398,10 @@ class Roots:
             if to_play is None:
                 self.roots[i].expand(-1, 0, i, value_prefixs[i], policies[i])
             else:
-                self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i])
+                if expert_latent_action is None:
+                    self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i])
+                else:
+                    self.roots[i].expand(to_play[i], 0, i, value_prefixs[i], policies[i], expert_latent_action[i])
 
             self.roots[i].visit_count += 1
 

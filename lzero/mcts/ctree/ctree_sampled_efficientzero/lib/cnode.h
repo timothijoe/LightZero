@@ -56,7 +56,7 @@ namespace tree
         ~CNode();
 
         void expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits);
-        void expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits, std::vector<float> expert_latent_action);
+        void expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits, std::vector<std::vector<float>> expert_latent_action);
         void add_exploration_noise(float exploration_fraction, const std::vector<float> &noises);
         float compute_mean_q(int isRoot, float parent_q, float discount_factor);
         void print_out();
@@ -87,9 +87,9 @@ namespace tree
         ~CRoots();
 
         void prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch);
-        void prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<float>> expert_latent_action);
+        void prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<std::vector<float>>> expert_latent_action);
         void prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch);
-        void prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<float>> expert_latent_action);
+        void prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<std::vector<float>>> expert_latent_action);
         void clear();
         // sampled related core code
         std::vector<std::vector<std::vector<float> > > get_trajectories();

@@ -49,6 +49,19 @@ float calculateLogProb(const GaussianMixtureModel& gmm, const std::vector<float>
     return logProb;
 }
 
+float calculateGaussianProb(const std::vector<float> mean, const std::vector<float> stddev, const std::vector<float>& action) {
+    float logProb = 0.0;
+    float prob = 1.0;
+    for (size_t j = 0; j < action.size(); ++j)
+    {
+        float diff = action[j] - mean[j];
+        float exponent = -0.5 * (diff * diff) / (stddev[j] * stddev[j]);
+        prob *= exp(exponent) / (stddev[j]);
+    }
+    logProb += log(prob);
+    return logProb;
+}
+
 // Function to sample from a Gaussian Mixture Model
 std::vector<float> sampleFromGMM(const GaussianMixtureModel& gmm) {
     size_t numComponents = gmm.weights.size();
@@ -254,7 +267,7 @@ namespace tree
 
     CNode::~CNode() {}
 
-    void CNode::expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits, std::vector<float> expert_latent_action)
+    void CNode::expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits, std::vector<std::vector<float>> expert_latent_action)
     {
         /*
         Overview:
@@ -271,250 +284,94 @@ namespace tree
         this->batch_index = batch_index;
         this->value_prefix = value_prefix;
         int action_num = policy_logits.size();
-
-        #ifdef _WIN32
-        // 创建动态数组
-        float* policy = new float[action_num];
-        #else
         float policy[action_num];
-        #endif
 
         std::vector<int> all_actions;
         for (int i = 0; i < action_num; ++i)
         {
             all_actions.push_back(i);
         }
-        std::vector<std::vector<float> > sampled_actions_after_tanh;
+        std::vector<std::vector<float>> sampled_actions_after_tanh;
         std::vector<float> sampled_actions_log_probs_after_tanh;
 
-        std::vector<int> sampled_actions;
-        std::vector<float> sampled_actions_log_probs;
-        std::vector<float> sampled_actions_probs;
-        std::vector<float> probs;
+        int gmm_num = 3;
+        int event_shape = 3;
+        GaussianMixtureModel gmm;
+        gmm.weights = {policy_logits.begin(), policy_logits.begin() + gmm_num};
+        gmm.components.resize(gmm_num);
+        for (int i = 0; i < gmm_num; ++i) {
+            gmm.components[i].mean = {policy_logits.begin() + gmm_num + i * event_shape,
+                                    policy_logits.begin() + gmm_num + (i + 1) * event_shape};  
+            gmm.components[i].stddev = {policy_logits.begin() + gmm_num + gmm_num * event_shape + i * event_shape,
+                                        policy_logits.begin() + gmm_num + gmm_num * event_shape + (i + 1) * event_shape};
 
-        /*
-        Overview:
-            When the currennt env has continuous action space, sampled K actions from continuous gaussia distribution policy.
-            When the currennt env has discrete action space, sampled K actions from discrete categirical distribution policy.
-
-        */
-        if (this->continuous_action_space == true)
-        {
-            // continuous action space for sampled algo..
-            this->action_space_size = policy_logits.size() / 2;
-            std::vector<float> mu;
-            std::vector<float> sigma;
-            for (int i = 0; i < this->action_space_size; ++i)
-            {
-                mu.push_back(policy_logits[i]);
-                sigma.push_back(policy_logits[this->action_space_size + i]);
-            }
-
-            // The number of nanoseconds that have elapsed since epoch(1970: 00: 00 UTC on January 1, 1970). unsigned type will truncate this value.
-            unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
-            // SAC-like tanh, pleasee refer to paper https://arxiv.org/abs/1801.01290.
-            std::vector<std::vector<float> > sampled_actions_before_tanh;
-
-            float sampled_action_one_dim_before_tanh;
-            std::vector<float> sampled_actions_log_probs_before_tanh;
-
-            std::default_random_engine generator(seed);
-            for (int i = 0; i < this->num_of_sampled_actions - this->expert_sample_num; ++i)
-            {
-                float sampled_action_prob_before_tanh = 1;
-                // TODO(pu): why here
-                std::vector<float> sampled_action_before_tanh;
-                std::vector<float> sampled_action_after_tanh;
-                std::vector<float> y;
-
-                for (int j = 0; j < this->action_space_size; ++j)
-                {
-                    std::normal_distribution<float> distribution(mu[j], sigma[j]);
-                    sampled_action_one_dim_before_tanh = distribution(generator);
-                    float expert_sigma = 0.8;
-                    float expert_bias = exp(-pow((sampled_action_one_dim_before_tanh - expert_latent_action[j]), 2) / (2 * pow(expert_sigma, 2)) - log(expert_sigma) - log(sqrt(2 * M_PI)));
-                    sampled_action_prob_before_tanh *= (exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)))+expert_bias);
-                    // refer to python normal log_prob method
-                    //sampled_action_prob_before_tanh *= exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)));
-                    sampled_action_before_tanh.push_back(sampled_action_one_dim_before_tanh);
-                    sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
-                    y.push_back(1 - pow(tanh(sampled_action_one_dim_before_tanh), 2) + 1e-6);
+            float lower_bound = -4.0;
+            float upper_bound = 4.0;
+            for(auto &m: gmm.components[i].stddev){
+                if (m < lower_bound) {
+                    m = lower_bound;
+                } else if (m > upper_bound) {
+                    m = upper_bound;
                 }
-                sampled_actions_before_tanh.push_back(sampled_action_before_tanh);
-                sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
-                sampled_actions_log_probs_before_tanh.push_back(log(sampled_action_prob_before_tanh));
-                float y_sum = std::accumulate(y.begin(), y.end(), 0.);
-                sampled_actions_log_probs_after_tanh.push_back(log(sampled_action_prob_before_tanh) - log(y_sum));
-            }
-            for (int i = 0; i < this->expert_sample_num; ++i)
-            {
-                float sampled_action_prob_before_tanh = 1;
-                // TODO(pu): why here
-                std::vector<float> sampled_action_before_tanh;
-                std::vector<float> sampled_action_after_tanh;
-                std::vector<float> y;
-
-                for (int j = 0; j < this->action_space_size; ++j)
-                {
-
-                    // std::normal_distribution<float> distribution(mu[j], sigma[j]);
-                    // sampled_action_one_dim_before_tanh = distribution(generator);
-                    // refer to python normal log_prob method
-                    sampled_action_one_dim_before_tanh = expert_latent_action[j];
-                    float expert_sigma = 0.8;
-                    float expert_bias = exp(-pow((sampled_action_one_dim_before_tanh - expert_latent_action[j]), 2) / (2 * pow(expert_sigma, 2)) - log(expert_sigma) - log(sqrt(2 * M_PI)));
-                    sampled_action_prob_before_tanh *= (exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)))+expert_bias);
-                    //sampled_action_prob_before_tanh *= exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)));
-                    sampled_action_before_tanh.push_back(sampled_action_one_dim_before_tanh);
-                    sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
-                    y.push_back(1 - pow(tanh(sampled_action_one_dim_before_tanh), 2) + 1e-6);
-                }
-                sampled_actions_before_tanh.push_back(sampled_action_before_tanh);
-                sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
-                sampled_actions_log_probs_before_tanh.push_back(log(sampled_action_prob_before_tanh));
-                float y_sum = std::accumulate(y.begin(), y.end(), 0.);
-                sampled_actions_log_probs_after_tanh.push_back(log(sampled_action_prob_before_tanh) - log(y_sum));
             }
         }
-        else
+        this->action_space_size = event_shape;
+        this->expert_sample_num = expert_latent_action.size();
+        float expert_sigma = 0.8;
+        std::vector<float> expert_latent_sigma;
+        for(int i = 0; i < this->action_space_size; i++)
         {
-            // discrete action space for sampled algo..
-
-            //========================================================
-            // python code
-            //========================================================
-            // if self.legal_actions is not None:
-            //     # fisrt use the self.legal_actions to exclude the illegal actions
-            //     policy_tmp = [0. for _ in range(self.action_space_size)]
-            //     for index, legal_action in enumerate(self.legal_actions):
-            //         policy_tmp[legal_action] = policy_logits[index]
-            //     policy_logits = policy_tmp
-            // # then empty the self.legal_actions
-            // self.legal_actions = []
-            // then empty the self.legal_actions
-            //            prob = torch.softmax(torch.tensor(policy_logits), dim=-1)
-            //            sampled_actions = torch.multinomial(prob, self.num_of_sampled_actions, replacement=False)
-
-            //========================================================
-            // TODO(pu): legal actions
-            //========================================================
-            // std::vector<float> policy_tmp;
-            // for (int i = 0; i < this->action_space_size; ++i)
-            // {
-            //     policy_tmp.push_back(0.);
-            // }
-            // for (int i = 0; i < this->legal_actions.size(); ++i)
-            // {
-            //     policy_tmp[this->legal_actions[i].value] = policy_logits[i];
-            // }
-            // for (int i = 0; i < this->action_space_size; ++i)
-            // {
-            //     policy_logits[i] = policy_tmp[i];
-            // }
-            // std::cout << "position 3" << std::endl;
-
-            // python code: legal_actions = []
-            std::vector<CAction> legal_actions;
-
-            // python code: probs = softmax(policy_logits)
-            float logits_exp_sum = 0;
-            for (int i = 0; i < policy_logits.size(); ++i)
-            {
-                logits_exp_sum += exp(policy_logits[i]);
+            expert_latent_sigma.push_back(expert_sigma);
+        }
+        // up to now, expert_latent_action, expert_latent_sigma to calc prob
+        for (int i = 0; i < this->num_of_sampled_actions - this->expert_sample_num; ++i)
+        {
+            float sampled_action_prob_before_tanh = 1;
+            std::vector<float> sampled_action_before_tanh;
+            std::vector<float> sampled_action_after_tanh;
+            std::vector<float> y;
+            std::vector<float> sampledAction = sampleFromGMM(gmm);
+            sampled_action_before_tanh = sampledAction;
+            for(auto sampled_action_one_dim_before_tanh:sampled_action_before_tanh ){
+                y.push_back(1 - pow(tanh(sampled_action_one_dim_before_tanh), 2) + 1e-6);
             }
-            for (int i = 0; i < policy_logits.size(); ++i)
-            {
-                probs.push_back(exp(policy_logits[i]) / (logits_exp_sum + 1e-6));
+            for(auto sampled_action_one_dim_before_tanh:sampled_action_before_tanh){
+                sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
             }
-
-            unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-
-            // cout << "sampled_action[0]:" << sampled_action[0] <<endl;
-
-            // std::vector<int> sampled_actions;
-            // std::vector<float> sampled_actions_log_probs;
-            // std::vector<float> sampled_actions_probs;
-            std::default_random_engine generator(seed);
-
-            //  有放回抽样
-            // for (int i = 0; i < num_of_sampled_actions; ++i)
-            // {
-            //     float sampled_action_prob = 1;
-            //     int sampled_action;
-
-            //     std::discrete_distribution<float> distribution(probs.begin(), probs.end());
-
-            //     // for (float x:distribution.probabilities()) std::cout << x << " ";
-            //     sampled_action = distribution(generator);
-            //     // std::cout << "sampled_action： " << sampled_action << std::endl;
-
-            //     sampled_actions.push_back(sampled_action);
-            //     sampled_actions_probs.push_back(probs[sampled_action]);
-            //     std::cout << "sampled_actions_probs" << '[' << i << ']' << sampled_actions_probs[i] << std::endl;
-
-            //     sampled_actions_log_probs.push_back(log(probs[sampled_action]));
-            //     std::cout << "sampled_actions_log_probs" << '[' << i << ']' << sampled_actions_log_probs[i] << std::endl;
-            // }
-
-            // 每个节点的legal_actions应该为一个固定离散集合，所以采用无放回抽样
-            // std::cout << "position uniform_distribution init" << std::endl;
-            std::uniform_real_distribution<double> uniform_distribution(0.0, 1.0); //均匀分布
-            // std::cout << "position uniform_distribution done" << std::endl;
-            std::vector<double> disturbed_probs;
-            std::vector<std::pair<int, double> > disc_action_with_probs;
-
-            // Use the reciprocal of the probability value as the exponent and a random number sampled from a uniform distribution as the base:
-            // Equivalent to adding a uniform random disturbance to the original probability value.
-            for (auto prob : probs)
-            {
-                disturbed_probs.push_back(std::pow(uniform_distribution(generator), 1. / prob));
-            }
-
-            // Sort from large to small according to the probability value after the disturbance:
-            // After sorting, the first vector is the index, and the second vector is the probability value after perturbation sorted from large to small.
-            for (size_t iter = 0; iter < disturbed_probs.size(); iter++)
-            {
-                #ifdef __APPLE__
-                    disc_action_with_probs.__emplace_back(std::make_pair(iter, disturbed_probs[iter]));
-                #else
-                    disc_action_with_probs.emplace_back(std::make_pair(iter, disturbed_probs[iter]));
-                #endif
-            }
-
-            std::sort(disc_action_with_probs.begin(), disc_action_with_probs.end(), cmp);
-
-            // take the fist ``num_of_sampled_actions`` actions
-            for (int k = 0; k < num_of_sampled_actions; ++k)
-            {
-                sampled_actions.push_back(disc_action_with_probs[k].first);
-                // disc_action_with_probs[k].second is disturbed_probs
-                // sampled_actions_probs.push_back(disc_action_with_probs[k].second);
-                sampled_actions_probs.push_back(probs[disc_action_with_probs[k].first]);
-
-                // TODO(pu): logging
-                // std::cout << "sampled_actions[k]： " << sampled_actions[k] << std::endl;
-                // std::cout << "sampled_actions_probs[k]： " << sampled_actions_probs[k] << std::endl;
-            }
-
-            // TODO(pu): fixed k, only for debugging
-            //  Take the first ``num_of_sampled_actions`` actions: k=0,1,...,K-1
-            // for (int k = 0; k < num_of_sampled_actions; ++k)
-            // {
-            //     sampled_actions.push_back(k);
-            //     // disc_action_with_probs[k].second is disturbed_probs
-            //     // sampled_actions_probs.push_back(disc_action_with_probs[k].second);
-            //     sampled_actions_probs.push_back(probs[k]);
-            // }
-
-            disturbed_probs.clear();        // Empty the collection to prepare for the next sampling.
-            disc_action_with_probs.clear(); // Empty the collection to prepare for the next sampling.
+            float logProb = calculateLogProb(gmm, sampledAction);
+            float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
+            float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
+            logProb = logProb + 0.1 * (glogProb1 + glogProb2);
+            float y_sum = std::accumulate(y.begin(), y.end(), 0.);
+            sampled_actions_log_probs_after_tanh.push_back(logProb - log(y_sum));
+            sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
         }
 
+        for (int i = 0; i < this->expert_sample_num; ++i)
+        {
+            float sampled_action_prob_before_tanh = 1;
+            std::vector<float> sampled_action_before_tanh;
+            std::vector<float> sampled_action_after_tanh;
+            std::vector<float> y;
+            std::vector<float> sampledAction = expert_latent_action[i];
+            sampled_action_before_tanh = sampledAction;
+            for(auto sampled_action_one_dim_before_tanh:sampled_action_before_tanh ){
+                y.push_back(1 - pow(tanh(sampled_action_one_dim_before_tanh), 2) + 1e-6);
+            }
+            for(auto sampled_action_one_dim_before_tanh:sampled_action_before_tanh){
+                sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
+            }
+            float logProb = calculateLogProb(gmm, sampledAction);
+            float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
+            float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
+            logProb = logProb + 0.1 * (glogProb1 + glogProb2);
+            float y_sum = std::accumulate(y.begin(), y.end(), 0.);
+            sampled_actions_log_probs_after_tanh.push_back(logProb - log(y_sum));
+            sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
+        }
         float prior;
         for (int i = 0; i < this->num_of_sampled_actions; ++i)
         {
-
             if (this->continuous_action_space == true)
             {
                 CAction action = CAction(sampled_actions_after_tanh[i], 0);
@@ -522,26 +379,9 @@ namespace tree
                 this->children[action.get_combined_hash()] = CNode(sampled_actions_log_probs_after_tanh[i], legal_actions, this->action_space_size, this->num_of_sampled_actions, this->continuous_action_space); // only for muzero/efficient zero, not support alphazero
                 this->legal_actions.push_back(action);
             }
-            else
-            {
-                std::vector<float> sampled_action_tmp;
-                for (size_t iter = 0; iter < 1; iter++)
-                {
-                    sampled_action_tmp.push_back(float(sampled_actions[i]));
-                }
-                CAction action = CAction(sampled_action_tmp, 0);
-                std::vector<CAction> legal_actions;
-                this->children[action.get_combined_hash()] = CNode(sampled_actions_probs[i], legal_actions, this->action_space_size, this->num_of_sampled_actions, this->continuous_action_space); // only for muzero/efficient zero, not support alphazero
-                this->legal_actions.push_back(action);
-            }
         }
-        
-        #ifdef _WIN32
-        // 释放数组内存
-        delete[] policy;
-        #else
-        #endif
     }
+    
     void CNode::expand(int to_play, int current_latent_state_index, int batch_index, float value_prefix, const std::vector<float> &policy_logits)
     {
         this->to_play = to_play;
@@ -881,7 +721,7 @@ namespace tree
         }
     }
 
-    void CRoots::prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<float>> expert_latent_action)
+    void CRoots::prepare(float root_noise_weight, const std::vector<std::vector<float> > &noises, const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<std::vector<float>>> expert_latent_action)
     {
         /*
         Overview:
@@ -922,7 +762,7 @@ namespace tree
         }
     }
 
-    void CRoots::prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<float>> expert_latent_action)
+    void CRoots::prepare_no_noise(const std::vector<float> &value_prefixs, const std::vector<std::vector<float> > &policies, std::vector<int> &to_play_batch, std::vector<std::vector<std::vector<float>>> expert_latent_action)
     {
         /*
         Overview:

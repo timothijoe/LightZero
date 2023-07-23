@@ -771,13 +771,15 @@ class SampledEfficientZeroPolicy(Policy):
         )        
         
         # 构建GMM的分量分布
+        component_weights = Categorical(weights)
         component_distributions = Independent(Normal(means, stddevs), 1)
         # 构建MixtureSameFamily对象
-        gmm = MixtureSameFamily(Categorical(weights), component_distributions)      
+        # gmm = MixtureSameFamily(Categorical(weights), component_distributions)   
+        gmm = MixtureSameFamily(component_weights, component_distributions)    
         dist = gmm 
-        means_margin = self.loss_margin(means)
-        weight_entropy = self.gmm_weight_entropy(weights)
-        margin_weight_scale = self._cfg.margin_weight_scale
+        # means_margin = self.loss_margin(means)
+        # weight_entropy = self.gmm_weight_entropy(weights)
+        # margin_weight_scale = self._cfg.margin_weight_scale
         
         #dist = Independent(Normal(mu, sigma), 1)
 
@@ -800,9 +802,9 @@ class SampledEfficientZeroPolicy(Policy):
         # policy_entropy_loss = -dist.entropy()
         # policy_entropy = torch.tensor([0]).to(device)
         # policy_entropy_loss = torch.tensor([0]).to(device)
-        policy_entropy = margin_weight_scale * means_margin + weight_entropy
+        policy_entropy = component_weights.entropy()
         policy_entropy = policy_entropy.mean()
-        policy_entropy_loss = margin_weight_scale * means_margin + weight_entropy
+        policy_entropy_loss = -component_weights.entropy()
         # Project the sampled-based improved policy back onto the space of representable policies. calculate KL
         # loss (batch_size, num_of_sampled_actions) -> (4,20) target_normalized_visit_count is
         # categorical distribution, the range of target_log_prob_sampled_actions is (-inf, 0), add 1e-6 for
@@ -1041,15 +1043,26 @@ class SampledEfficientZeroPolicy(Policy):
             with torch.no_grad():
                 expert_frame = data
                 expert_latent_action = self._collect_model.get_expert_action(expert_frame)
+                expert_latent_action_wild = self._collect_model.get_expert_action_wild(expert_frame)
                 device = expert_latent_action.device
                 expert_latent_action = torch.clamp(
                     expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
                 )
-                expert_latent_action = torch.arctanh(expert_latent_action)
-                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
+                expert_latent_action_wild = torch.clamp(
+                    expert_latent_action_wild, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
+                expert_latent_action = torch.arctanh(expert_latent_action)       
+                expert_latent_action_wild = torch.arctanh(expert_latent_action_wild)
+                final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+                
+                # expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()  
+                # expert_latent_action_wild = expert_latent_action_wild.detach().cpu().numpy().tolist()
+                # final_expert_list = [expert_latent_action + expert_latent_action_wild]
+                final_expert_list = final_expert_action.detach().cpu().numpy().tolist() 
 
             if self._cfg.use_expert:
-                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
+                #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
+                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, final_expert_list)
             else:
                 roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
             self._mcts_collect.search(
@@ -1183,18 +1196,26 @@ class SampledEfficientZeroPolicy(Policy):
             with torch.no_grad():
                 expert_frame = data
                 expert_latent_action = self._collect_model.get_expert_action(expert_frame)
+                expert_latent_action_wild = self._collect_model.get_expert_action_wild(expert_frame)
                 device = expert_latent_action.device
                 expert_latent_action = torch.clamp(
                     expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
                 )
-                expert_latent_action = torch.arctanh(expert_latent_action)
-                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
+                expert_latent_action_wild = torch.clamp(
+                    expert_latent_action_wild, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
+                expert_latent_action = torch.arctanh(expert_latent_action)       
+                expert_latent_action_wild = torch.arctanh(expert_latent_action_wild)
+                final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+                final_expert_list = final_expert_action.detach().cpu().numpy().tolist() 
+
 
 
             #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
             #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             if self._cfg.use_expert:
-                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+                #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, final_expert_list)
             else:
                 roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
