@@ -369,6 +369,7 @@ class SampledEfficientZeroModel(nn.Module):
         import os 
         pwd = os.getcwd()
         expert_encoder_ckpt_path = pwd + '/model_path/encoder_60_model'
+        expert_encoder_ckpt_path = '/home/zhoutong/osiris/LightZero_metadrive/model_path/round_70_model'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         self.expert_encoder.load_state_dict(checkpoint)
         print('zt')

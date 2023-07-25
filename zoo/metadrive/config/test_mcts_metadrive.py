@@ -35,9 +35,11 @@ pendulum_sampled_efficientzero_config = dict(
             show_seq_traj = True,
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
-            use_chase_camera_follow_lane = True,
+            # use_chase_camera_follow_lane = True,
             show_interface_navi_mark=False,
             need_interface=False,
+            map = 'OSOS',
+            use_chase_camera_follow_lane = True,
         ),
     ),
     policy=dict(
@@ -112,5 +114,6 @@ if __name__ == "__main__":
     zt_path = None
     zt_path = '/home/zhoutong/hoffung/expert_data_collection/mcts_ckpt/ckpt_best.pth.tar'
     zt_path = '/home/zhoutong/Downloads/ckpt_best.pth.tar'
+    zt_path = '/home/zhoutong/Downloads/roundabout_ckpt_best.pth.tar'
 
     eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=50)
