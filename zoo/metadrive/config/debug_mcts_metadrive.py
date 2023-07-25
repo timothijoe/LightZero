@@ -35,12 +35,13 @@ pendulum_sampled_efficientzero_config = dict(
             show_seq_traj = False,
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
+            seq_traj_len=1,
         ),
     ),
     policy=dict(
         model=dict(
             observation_shape=[5, 200, 200],
-            action_space_size=3,
+            action_space_size=2,
             continuous_action_space=continuous_action_space,
             num_of_sampled_actions=K,
             sigma_type='conditioned',
