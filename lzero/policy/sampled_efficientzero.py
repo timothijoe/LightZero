@@ -336,14 +336,7 @@ class SampledEfficientZeroPolicy(Policy):
         # the core initial_inference in SampledEfficientZero policy.
         # ==============================================================
         network_output = self._learn_model.initial_inference(obs_batch)
-        with torch.no_grad():
-            expert_frame = encoder_image_list[0]
-            expert_latent_action = self._learn_model.get_expert_action(expert_frame)
-            device = expert_latent_action.device
-            expert_latent_action = torch.clamp(
-                expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
-            )
-            expert_latent_action = torch.arctanh(expert_latent_action)
+
 
         # value_prefix shape: (batch_size, 10), the ``value_prefix`` at the first step is zero padding.
         latent_state, value_prefix, reward_hidden_state, value, policy_logits = ez_network_output_unpack(network_output)
@@ -379,7 +372,6 @@ class SampledEfficientZeroPolicy(Policy):
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma = self._calculate_policy_loss_cont(
                 policy_loss, policy_logits, target_policy, mask_batch, child_sampled_actions_batch, unroll_step=0
             )
-            expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
         else:
             """discrete action space"""
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -453,15 +445,6 @@ class SampledEfficientZeroPolicy(Policy):
                     child_sampled_actions_batch,
                     unroll_step=step_i + 1
                 )
-                with torch.no_grad():
-                    expert_frame = encoder_image_list[step_i+1]
-                    expert_latent_action = self._learn_model.get_expert_action(expert_frame)
-                    device = expert_latent_action.device
-                    expert_latent_action = torch.clamp(
-                        expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
-                    )
-                    expert_latent_action = torch.arctanh(expert_latent_action)
-                expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
             else:
                 """discrete action space"""
                 policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -504,9 +487,6 @@ class SampledEfficientZeroPolicy(Policy):
             self._cfg.policy_entropy_loss_weight * policy_entropy_loss
         )
         weighted_total_loss = (weights * loss).mean()
-        # use_expert = True 
-        if self._cfg.use_expert:
-            weighted_total_loss += expert_loss.mean() * self._cfg.expert_weight
         weighted_total_loss.register_hook(lambda grad: grad * gradient_scale)
         self._optimizer.zero_grad()
         weighted_total_loss.backward()
@@ -897,18 +877,8 @@ class SampledEfficientZeroPolicy(Policy):
             ]
 
 
-            with torch.no_grad():
-                expert_frame = data
-                expert_latent_action = self._collect_model.get_expert_action(expert_frame)
-                device = expert_latent_action.device
-                expert_latent_action = torch.clamp(
-                    expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
-                )
-                expert_latent_action = torch.arctanh(expert_latent_action)
-                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
-
             if self._cfg.use_expert:
-                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
+                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
             else:
                 roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
             self._mcts_collect.search(
@@ -1039,21 +1009,12 @@ class SampledEfficientZeroPolicy(Policy):
                 )
 
 
-            with torch.no_grad():
-                expert_frame = data
-                expert_latent_action = self._collect_model.get_expert_action(expert_frame)
-                device = expert_latent_action.device
-                expert_latent_action = torch.clamp(
-                    expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
-                )
-                expert_latent_action = torch.arctanh(expert_latent_action)
-                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
 
 
             #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
             #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             if self._cfg.use_expert:
-                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
+                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             else:
                 roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
