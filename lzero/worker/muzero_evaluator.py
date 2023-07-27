@@ -203,6 +203,13 @@ class MuZeroEvaluator(ISerialEvaluator):
             - stop_flag (:obj:`bool`): Whether this training program can be ended.
             - eval_reward (:obj:`float`): Current eval_reward.
         """
+        z_success_times = 0 
+        z_fail_times = 0 
+        z_crash_vehicle_times = 0
+        # z_arrive_dest_times = 0
+        z_out_of_road_times = 0
+        z_timed_out = 0
+        complete_ratio_list = []
         if n_episode is None:
             n_episode = self._default_n_episode
         assert n_episode is not None, "please indicate eval n_episode"
@@ -331,6 +338,23 @@ class MuZeroEvaluator(ISerialEvaluator):
                         # Env reset is done by env_manager automatically.
                         self._policy.reset([env_id])
                         reward = t.info['eval_episode_return']
+
+                        arrive_dest = t.info['arrive_dest']
+                        if arrive_dest:
+                            z_success_times += 1 
+                        else:
+                            z_fail_times += 1 
+                        if t.info['crash_vehicle']:
+                            z_crash_vehicle_times += 1
+                        if t.info['out_of_road']:
+                            z_out_of_road_times += 1 
+                        if t.info['crash_building']:
+                            z_timed_out += 1                         
+
+                        if 'complete_ratio' in t.info:
+                            complete_ratio_list.append(float(t.info['complete_ratio']))   
+                       
+                        
                         if 'episode_info' in t.info:
                             eval_monitor.update_info(env_id, t.info['episode_info'])
                         eval_monitor.update_reward(env_id, reward)
@@ -392,6 +416,10 @@ class MuZeroEvaluator(ISerialEvaluator):
                     envstep_count += 1
         duration = self._timer.value
         episode_return = eval_monitor.get_episode_return()
+        success_ratio = float(z_success_times) / float(z_success_times + z_fail_times)
+        crash_vehicle_ratio = float(z_crash_vehicle_times) / float(z_success_times + z_fail_times)
+        out_of_road_ratio = float(z_out_of_road_times) / float(z_success_times + z_fail_times)
+        timed_out_ratio = float(z_timed_out)/ float(z_success_times + z_fail_times)
         info = {
             'train_iter': train_iter,
             'ckpt_name': 'iteration_{}.pth.tar'.format(train_iter),
@@ -406,6 +434,11 @@ class MuZeroEvaluator(ISerialEvaluator):
             'reward_max': np.max(episode_return),
             'reward_min': np.min(episode_return),
             # 'each_reward': episode_return,
+            'complete_ratio': np.mean(complete_ratio_list),
+            'succ_rate': success_ratio,
+            'crash_vehicle_ratio': crash_vehicle_ratio,
+            'out_of_road_ratio': out_of_road_ratio,
+            'timed_out_ratio' : timed_out_ratio,
         }
         episode_info = eval_monitor.get_episode_info()
         if episode_info is not None:
