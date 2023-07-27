@@ -64,16 +64,27 @@ pendulum_sampled_efficientzero_config = dict(
         batch_size=batch_size,
         optim_type='Adam',
         lr_piecewise_constant_decay=False,
-        learning_rate=0.003,
+        learning_rate=0.0003,
         # NOTE: for continuous gaussian policy, we use the policy_entropy_loss as in the original Sampled MuZero paper.
         policy_entropy_loss_weight=5e-3,
         num_simulations=num_simulations,
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
         eval_freq=int(2e3),
-        replay_buffer_size=int(64),  # the size/capacity of replay_buffer, in the terms of transitions.
+        replay_buffer_size=int(3e4),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
+        discount_factor=0.99,
+        td_steps = 20,
+        num_unroll_steps = 20,
+        normalize_prob_of_sampled_actions = True,
+        learn=dict(
+            learner=dict(
+                hook=dict(
+                    save_ckpt_after_iter=5000000,
+                ),
+            ),
+        ),
     ),
 )
 pendulum_sampled_efficientzero_config = EasyDict(pendulum_sampled_efficientzero_config)
