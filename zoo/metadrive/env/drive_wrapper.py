@@ -94,7 +94,9 @@ class DriveEnvWrapper(gym.Wrapper):
             if isinstance(obs, dict):
                 obs = obs['birdview']
             metadrive_obs['observation'] = obs  
-            metadrive_obs['action_mask'] = None 
+            #metadrive_obs['action_mask'] = None 
+            action_mask = np.ones(49, 'int8')
+            metadrive_obs['action_mask'] = action_mask 
             metadrive_obs['to_play'] = -1 
             return metadrive_obs
         return obs
@@ -133,7 +135,8 @@ class DriveEnvWrapper(gym.Wrapper):
             if isinstance(obs, dict):
                 obs = obs['birdview']
             metadrive_obs['observation'] = obs  
-            metadrive_obs['action_mask'] = None 
+            action_mask = np.ones(49, 'int8')
+            metadrive_obs['action_mask'] = action_mask 
             metadrive_obs['to_play'] = -1 
             return BaseEnvTimestep(metadrive_obs, rew, done, info)
         return BaseEnvTimestep(obs, rew, done, info)

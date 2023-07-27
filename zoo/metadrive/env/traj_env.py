@@ -256,6 +256,14 @@ class MetaDriveTrajEnv(BaseEnv):
     # now that in this situation, we directly set trajectory len equals to simulation frequency
 
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
+        single_zt_dim = 7
+        steer_candidates = [-1.0, -0.66, -0.33, 0, 0.33, 0.66, 1]
+        throttle_candidates = [-1.0, -0.66, -0.33, 0, 0.33, 0.66, 1]
+        steer_select = actions % single_zt_dim 
+        throttle_select = actions // single_zt_dim
+        steer = steer_candidates[steer_select]
+        throttle = throttle_candidates[throttle_select]
+        actions = np.array([steer, throttle])
         self.episode_steps += 1
         if self.config["zt_mcts"]:
             init_state = copy.deepcopy(self.z_state)
