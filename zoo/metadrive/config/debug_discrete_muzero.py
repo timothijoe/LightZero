@@ -36,6 +36,7 @@ pendulum_sampled_efficientzero_config = dict(
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
             seq_traj_len=1,
+            is_continuous = False,
         ),
     ),
     policy=dict(
