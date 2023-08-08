@@ -8,7 +8,7 @@ K = 10  # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
-num_simulations = 5
+num_simulations = 50
 update_per_collect = 2
 batch_size = 8
 max_env_step = int(1e6)
@@ -30,9 +30,9 @@ pendulum_sampled_efficientzero_config = dict(
         n_evaluator_episode=evaluator_env_num,
         manager=dict(shared_memory=False, ),
         metadrive=dict(
-            use_render=False,
+            use_render=True,
             traffic_density=0.30,  # Density of vehicles occupying the roads, range in [0,1]
-            show_seq_traj = False,
+            show_seq_traj = True,
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
         ),
@@ -51,6 +51,7 @@ pendulum_sampled_efficientzero_config = dict(
             image_channel=5,
         ),
         cuda=True,
+        use_expert = True,
         env_type='not_board_games',
         game_segment_length=50,
         update_per_collect=update_per_collect,
@@ -108,5 +109,6 @@ if __name__ == "__main__":
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
     zt_path = None
     zt_path = '/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar'
+    zt_path = '/home/hunter/obelisk/data_ckpt/f_server/ckpt_best.pth.tar'
 
-    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=5)
+    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=50)
