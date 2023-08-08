@@ -27,7 +27,7 @@ pendulum_sampled_efficientzero_config = dict(
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
-        obs_shape = [5, 200, 200],
+        obs_shape = [6, 200, 200],
         manually_discretization=False,
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
@@ -51,11 +51,12 @@ pendulum_sampled_efficientzero_config = dict(
             crash_vehicle_penalty = 4.0,
             out_of_road_penalty = 5.0,
             use_cross_line_penalty=True,
+            use_explicit_vel_obs = True,
         ),
     ),
     policy=dict(
         model=dict(
-            observation_shape=[5, 200, 200],
+            observation_shape=[6, 200, 200],
             action_space_size=3,
             continuous_action_space=continuous_action_space,
             num_of_sampled_actions=K,

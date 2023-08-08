@@ -139,6 +139,8 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     ignore_first_steer = False,
     add_extra_speed_penalty = False,
     use_cross_line_penalty = False,
+    use_explicit_vel_obs = False,
+    use_explicit_vel_obs_compare = False,
 )
 
 
@@ -697,9 +699,27 @@ class MetaDriveTrajEnv(BaseEnv):
             rewards[v_id], reward_infos[v_id] = self.reward_function(v_id)
             _, cost_infos[v_id] = self.cost_function(v_id)
             done = done_function_result or self.dones[v_id]
+            if self.config['use_explicit_vel_obs']:
+                max_spd = 10.0
+                cur_spd = self.z_state[3]
+                a_pixel = cur_spd / max_spd
+                a_pixel = clip(a_pixel, 0.0, 1.0)
+                max_steer = 1.0
+                cur_steer = self.z_state[5] + max_steer 
+                b_pixel = cur_steer / max_steer 
+                b_pixel = clip(b_pixel, 0.0, 1.0)
+                additional_channel = np.zeros((200, 200, 1))
+                original_channels = obses['default_agent']['birdview']
+                combined_channel = np.concatenate((original_channels, additional_channel), axis = 2)
+                obses['default_agent']['birdview'] = combined_channel
+                obses['default_agent']['birdview'][:,:, 5]=0.0
+                obses['default_agent']['birdview'][:,10:50, 5]=a_pixel
+                obses['default_agent']['birdview'][:,50:90, 5]=b_pixel
+                if self.config['use_explicit_vel_obs_compare']:
+                    obses['default_agent']['birdview'][:,:, 5]=0.0
             self.dones[v_id] = done
             if done:
-                obses['default_agent']['birdview'][:,:10, 4]=1.0
+                obses['default_agent']['birdview'][:,:10, 5]=1.0
 
         should_done = engine_info.get(REPLAY_DONE, False
                                       ) or (self.config["horizon"] and self.episode_steps >= self.config["horizon"])
@@ -836,6 +856,26 @@ class MetaDriveTrajEnv(BaseEnv):
                 #o_dict['speed'] = v.last_spd
             else:
                 o_dict = o
+
+            if self.config['use_explicit_vel_obs']:
+                max_spd = 10.0
+                cur_spd = self.z_state[3]
+                a_pixel = cur_spd / max_spd
+                a_pixel = clip(a_pixel, 0.0, 1.0)
+                max_steer = 1.0
+                cur_steer = self.z_state[5] + max_steer 
+                b_pixel = cur_steer / max_steer 
+                b_pixel = clip(b_pixel, 0.0, 1.0)
+                additional_channel = np.zeros((200, 200, 1))
+                original_channels = o_dict['birdview']
+                combined_channel = np.concatenate((original_channels, additional_channel), axis = 2)
+                o_dict['birdview'] = combined_channel
+                o_dict['birdview'][:,:, 5]=0.0
+                o_dict['birdview'][:,10:50, 5]=a_pixel
+                o_dict['birdview'][:,50:90, 5]=b_pixel
+                if self.config['use_explicit_vel_obs_compare']:
+                    o_dict['birdview'][:,:, 5]=0.0
+
             o_reset = o_dict
             if hasattr(v, 'macro_succ'):
                 v.macro_succ = False

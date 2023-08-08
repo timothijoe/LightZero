@@ -387,10 +387,12 @@ class SampledEfficientZeroModel(nn.Module):
         print('zt')
     
     def get_expert_action(self, obs):
+        obs = obs[:, :5]
         expert_action = self.expert_encoder(obs)
         return expert_action 
 
     def get_expert_action_wild(self, obs):
+        obs = obs[:, :5]
         expert_action = self.expert_encoder_wild(obs)
         return expert_action 
 

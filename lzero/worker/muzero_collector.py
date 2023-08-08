@@ -430,6 +430,11 @@ class MuZeroCollector(ISerialCollector):
                         game_segments[env_id].store_search_stats(distributions_dict[env_id], value_dict[env_id])
                     # append a transition tuple, including a_t, o_{t+1}, r_{t}, action_mask_{t}, to_play_{t}
                     # in ``game_segments[env_id].init``, we have append o_{t} in ``self.obs_segment``
+                    
+                    if ((obs['observation'].shape == (200, 200, 6))):
+                        print('zt')
+                    else:
+                        print('zt1')
                     game_segments[env_id].append(
                         actions[env_id], to_ndarray(obs['observation']), reward, action_mask_dict[env_id],
                         to_play_dict[env_id]
