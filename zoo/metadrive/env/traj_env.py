@@ -138,6 +138,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     use_jerk_reward = False,
     ignore_first_steer = False,
     add_extra_speed_penalty = False,
+    use_cross_line_penalty = False,
 )
 
 
@@ -464,6 +465,9 @@ class MetaDriveTrajEnv(BaseEnv):
         jerk_reward = 0.0 
         # Generally speaking, driving reward is a necessity
         driving_reward += self.config["driving_reward"] * (long_now - long_last) * lateral_factor * positive_road 
+        if self.config["use_cross_line_penalty"]:
+            if vehicle.on_broken_line:
+                driving_reward -= 0.4
         # # Speed reward
         if self.config["use_speed_reward"]:
             max_spd = 10
@@ -500,11 +504,16 @@ class MetaDriveTrajEnv(BaseEnv):
             print('current step: {}'.format(self.step_num))
             print('total reward: {}'.format(reward))
         # print('speed: {}'.format(speed))
-        step_info["step_reward"] = reward
+        step_info["step_reward"] = reward 
+        append_rwd = 0.4 * (self.episode_max_step - self.step_num)
+        if append_rwd < 0.0:
+            append_rwd = 0.0
         if vehicle.arrive_destination:
             reward = +self.config["success_reward"]
+            reward += append_rwd
         elif vehicle.macro_succ:
             reward = +self.config["success_reward"]
+            reward += append_rwd
         elif self._is_out_of_road(vehicle):
             reward = -self.config["out_of_road_penalty"]
         elif vehicle.crash_vehicle:

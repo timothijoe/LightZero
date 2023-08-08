@@ -1,5 +1,6 @@
 from easydict import EasyDict
-
+import os 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # ==============================================================
 # begin of the most frequently changed config specified by the user
 # ==============================================================
@@ -8,15 +9,15 @@ SEQ_TRAJ_LEN = 10
 
 
 continuous_action_space = True
-K = 10  # num_of_sampled_actions
-collector_env_num = 16
-n_episode = 16
-evaluator_env_num = 16
-num_simulations = 50
+K = 20  # num_of_sampled_actions
+collector_env_num = 14
+n_episode = 14
+evaluator_env_num = 14
+num_simulations = 100
 update_per_collect = 200
 batch_size = 64 #256
 max_env_step = int(1e6)
-reanalyze_ratio = 1.0
+reanalyze_ratio = 0.0
 # ==============================================================
 # end of the most frequently changed config specified by the user
 # ==============================================================
@@ -39,13 +40,13 @@ pendulum_sampled_efficientzero_config = dict(
             traffic_density = 0.3,
             seq_traj_len = SEQ_TRAJ_LEN,
             traj_control_mode = TRAJ_CONTROL_MODE,
-            avg_speed = 6.5,
+            avg_speed = 5.0,
             use_lateral=True,
             use_speed_reward = True,
             use_heading_reward = True,
             use_jerk_reward = True,
             heading_reward=0.15,
-            speed_reward = 0.05,
+            speed_reward = 0.00,
             driving_reward = 0.2,
             ignore_first_steer = False,
             crash_vehicle_penalty = 4.0,
