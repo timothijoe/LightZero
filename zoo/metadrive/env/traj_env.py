@@ -713,13 +713,13 @@ class MetaDriveTrajEnv(BaseEnv):
                 combined_channel = np.concatenate((original_channels, additional_channel), axis = 2)
                 obses['default_agent']['birdview'] = combined_channel
                 obses['default_agent']['birdview'][:,:, 5]=0.0
-                obses['default_agent']['birdview'][:,10:50, 5]=a_pixel
+                obses['default_agent']['birdview'][:,0:50, 5]=a_pixel
                 obses['default_agent']['birdview'][:,50:90, 5]=b_pixel
                 if self.config['use_explicit_vel_obs_compare']:
                     obses['default_agent']['birdview'][:,:, 5]=0.0
             self.dones[v_id] = done
             if done:
-                obses['default_agent']['birdview'][:,:10, 5]=1.0
+                obses['default_agent']['birdview'][:,100:200, 5]=1.0
 
         should_done = engine_info.get(REPLAY_DONE, False
                                       ) or (self.config["horizon"] and self.episode_steps >= self.config["horizon"])
