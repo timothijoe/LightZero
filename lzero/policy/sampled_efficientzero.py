@@ -342,21 +342,23 @@ class SampledEfficientZeroPolicy(Policy):
         # the core initial_inference in SampledEfficientZero policy.
         # ==============================================================
         network_output = self._learn_model.initial_inference(obs_batch)
-        with torch.no_grad():
-            expert_frame = encoder_image_list[0]
-            expert_latent_action = self._learn_model.get_expert_action(expert_frame)
-            device = expert_latent_action.device
-            expert_latent_action = torch.clamp(
-                expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
-            )
-            expert_latent_action = torch.arctanh(expert_latent_action)
+        # with torch.no_grad():
+        #     expert_frame = encoder_image_list[0]
+        #     expert_latent_action = self._learn_model.get_expert_action(expert_frame)
+        #     device = expert_latent_action.device
+        #     expert_latent_action = torch.clamp(
+        #         expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+        #     )
+        #     expert_latent_action = torch.arctanh(expert_latent_action)
             
-            expert_latent_action_wild = self._learn_model.get_expert_action_wild(expert_frame)
-            expert_latent_action_wild = torch.clamp(
-                expert_latent_action_wild, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
-            )
-            expert_latent_action_wild = torch.arctanh(expert_latent_action_wild)
-            final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+        #     expert_latent_action_wild = self._learn_model.get_expert_action_wild(expert_frame)
+        #     expert_latent_action_wild = torch.clamp(
+        #         expert_latent_action_wild, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+        #     )
+        #     expert_latent_action_wild = torch.arctanh(expert_latent_action_wild)
+        #     final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+        expert_frame = encoder_image_list[0]
+        expert_policy_tensor = self._calculate_expert_policy(expert_frame)
 
         # value_prefix shape: (batch_size, 10), the ``value_prefix`` at the first step is zero padding.
         latent_state, value_prefix, reward_hidden_state, value, policy_logits = ez_network_output_unpack(network_output)
@@ -390,7 +392,7 @@ class SampledEfficientZeroPolicy(Policy):
         if self._cfg.model.continuous_action_space:
             """continuous action space"""
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma = self._calculate_policy_loss_cont(
-                policy_loss, policy_logits, target_policy, mask_batch, child_sampled_actions_batch, unroll_step=0
+                policy_loss, policy_logits, target_policy, mask_batch, child_sampled_actions_batch, unroll_step=0, expert_latent_action =expert_policy_tensor
             )
             if self._cfg.multi_task_learning:
                 expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
@@ -449,7 +451,8 @@ class SampledEfficientZeroPolicy(Policy):
                     temp_loss = negative_cosine_similarity(dynamic_proj, observation_proj) * mask_batch[:, step_i]
 
                     consistency_loss += temp_loss
-
+            expert_frame = encoder_image_list[step_i+1]
+            expert_policy_tensor = self._calculate_expert_policy(expert_frame)
             # NOTE: the target policy, target_value_categorical, target_value_prefix_categorical is calculated in
             # game buffer now.
             # ==============================================================
@@ -465,7 +468,8 @@ class SampledEfficientZeroPolicy(Policy):
                     target_policy,
                     mask_batch,
                     child_sampled_actions_batch,
-                    unroll_step=step_i + 1
+                    unroll_step=step_i + 1,
+                    expert_latent_action =expert_policy_tensor
                 )
                 with torch.no_grad():
                     expert_frame = encoder_image_list[step_i+1]
@@ -706,10 +710,43 @@ class SampledEfficientZeroPolicy(Policy):
         policy_entropy = component_weights.entropy()
         policy_entropy = policy_entropy.mean()
         policy_entropy_loss = -component_weights.entropy()
+
         # Project the sampled-based improved policy back onto the space of representable policies. calculate KL
         # loss (batch_size, num_of_sampled_actions) -> (4,20) target_normalized_visit_count is
         # categorical distribution, the range of target_log_prob_sampled_actions is (-inf, 0), add 1e-6 for
         # numerical stability.
+        if expert_latent_action is not None:
+            expert_num = expert_latent_action.shape[1]
+            with torch.no_grad():
+                experts_prob_list = []
+                for i in range(expert_num):
+                    single_expert = expert_latent_action[:,i]
+                    single_sigma = torch.full_like(single_expert, 0.4)
+                    single_prob_list = []
+                    for k in range(self._cfg.model.num_of_sampled_actions):
+                        device = target_sampled_actions.device
+                        target_sampled_actions_clamped = torch.clamp(
+                            target_sampled_actions[:, k, :], torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                        )
+                        target_sampled_actions_before_tanh = torch.arctanh(target_sampled_actions_clamped)
+                        dist_expert = Independent(Normal(single_expert, single_sigma), 1)    
+                        expert_log_prob = dist_expert.log_prob(target_sampled_actions_before_tanh) 
+                        expert_prob = torch.exp(expert_log_prob)
+                        single_prob_list.append(expert_prob)
+                    single_prob_expert = torch.stack(single_prob_list, dim = 1)
+                    single_prob_expert = torch.exp(single_prob_expert) / (torch.exp(single_prob_expert).sum(
+                        -1
+                    )+1e-6).unsqueeze(-1).repeat(1, single_prob_expert.shape[-1]).detach()
+                    experts_prob_list.append(single_prob_expert)
+                stacked_expert = torch.stack(experts_prob_list)
+                alpha = 0.5
+                avg_expert_probs = torch.mean(stacked_expert, dim = 0)
+                prior_probs = target_normalized_visit_count
+
+                evidence = torch.sum((avg_expert_probs**alpha) * prior_probs, dim=1) + 1e-9
+                posterior_probs = (avg_expert_probs**alpha) * prior_probs / evidence.unsqueeze(1)
+                target_normalized_visit_count = posterior_probs
+
         target_log_prob_sampled_actions = torch.log(target_normalized_visit_count + 1e-6)
         log_prob_sampled_actions = []
         for k in range(self._cfg.model.num_of_sampled_actions):
@@ -736,6 +773,8 @@ class SampledEfficientZeroPolicy(Policy):
             log_prob = log_prob.squeeze(-1)
 
             log_prob_sampled_actions.append(log_prob)
+        
+
 
         # shape: (batch_size, num_of_sampled_actions) e.g. (4,20)
         log_prob_sampled_actions = torch.stack(log_prob_sampled_actions, dim=-1)
@@ -851,6 +890,24 @@ class SampledEfficientZeroPolicy(Policy):
             ) * mask_batch[:, unroll_step]
 
         return policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions
+
+
+    def _calculate_expert_policy(self, expert_frame):
+        with torch.no_grad():
+            expert_latent_action = self._learn_model.get_expert_action(expert_frame)
+            device = expert_latent_action.device
+            expert_latent_action = torch.clamp(
+                expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+            )
+            expert_latent_action = torch.arctanh(expert_latent_action)
+            expert_latent_action_wild = self._learn_model.get_expert_action_wild(expert_frame)
+            expert_latent_action_wild = torch.clamp(
+                expert_latent_action_wild, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+            )
+            expert_latent_action_wild = torch.arctanh(expert_latent_action_wild)
+            final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+            return final_expert_action
+
 
     def _init_collect(self) -> None:
         """
