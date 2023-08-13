@@ -719,7 +719,10 @@ class MetaDriveTrajEnv(BaseEnv):
                     obses['default_agent']['birdview'][:,:, 5]=0.0
             self.dones[v_id] = done
             if done:
-                obses['default_agent']['birdview'][:,100:200, 5]=1.0
+                if self.config['use_explicit_vel_obs']:
+                    obses['default_agent']['birdview'][:,100:200, 5]=1.0
+                else:
+                    obses['default_agent']['birdview'][:,100:200, 4]=1.0
 
         should_done = engine_info.get(REPLAY_DONE, False
                                       ) or (self.config["horizon"] and self.episode_steps >= self.config["horizon"])
