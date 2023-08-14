@@ -78,6 +78,8 @@ class SampledEfficientZeroPolicy(Policy):
         # (bool) Whether to use cuda in policy.
         cuda=True,
         use_expert = False,
+        use_bayesian = False,
+        bayesian_alpha = 1.0,
         multi_task_learning = False, # if true, we optimize policy to target policy and KL diverence to imitation learning result
         # (int) The number of environments used in collecting data.
         collector_env_num=8,
@@ -739,13 +741,14 @@ class SampledEfficientZeroPolicy(Policy):
                     )+1e-6).unsqueeze(-1).repeat(1, single_prob_expert.shape[-1]).detach()
                     experts_prob_list.append(single_prob_expert)
                 stacked_expert = torch.stack(experts_prob_list)
-                alpha = 0.5
+                alpha = self._cfg.bayesian_alpha 
                 avg_expert_probs = torch.mean(stacked_expert, dim = 0)
                 prior_probs = target_normalized_visit_count
 
                 evidence = torch.sum((avg_expert_probs**alpha) * prior_probs, dim=1) + 1e-9
                 posterior_probs = (avg_expert_probs**alpha) * prior_probs / evidence.unsqueeze(1)
-                target_normalized_visit_count = posterior_probs
+                if self._cfg.use_bayesian is True:
+                    target_normalized_visit_count = posterior_probs
 
         target_log_prob_sampled_actions = torch.log(target_normalized_visit_count + 1e-6)
         log_prob_sampled_actions = []

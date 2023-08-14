@@ -53,6 +53,8 @@ pendulum_sampled_efficientzero_config = dict(
             out_of_road_penalty = 5.0,
             use_cross_line_penalty=True,
             use_explicit_vel_obs = True,
+            use_bayesian=True,
+            bayesian_alpha = 0.1,
         ),
     ),
     policy=dict(
