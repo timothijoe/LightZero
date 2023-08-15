@@ -254,6 +254,8 @@ class MetaDriveTrajEnv(BaseEnv):
         
         
         if self.config["zt_mcts"]:
+            if isinstance(actions, dict):
+                actions = actions['decision']
             init_state = copy.deepcopy(self.z_state)
             # (6)
             init_state = torch.from_numpy(init_state).to(torch.float32)

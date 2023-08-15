@@ -7,7 +7,7 @@ import copy
 
 from lzero.policy import InverseScalarTransform, to_detach_cpu_numpy
 from lzero.mcts.ptree import MinMaxStatsList
-
+from lzero.mcts.utils import plot_simulation_graph, generate_node_net
 if TYPE_CHECKING:
     import lzero.mcts.ptree.ptree_sez as ptree
 
@@ -58,6 +58,9 @@ class SampledEfficientZeroMCTSPtree(object):
         self.inverse_scalar_transform_handle = InverseScalarTransform(
             self._cfg.model.support_scale, self._cfg.device, self._cfg.model.categorical_distribution
         )
+        self.current_step = 0
+        self.use_node_graph = True 
+        self.node_graph = None 
 
     @classmethod
     def roots(
@@ -99,6 +102,7 @@ class SampledEfficientZeroMCTSPtree(object):
         """
         with torch.no_grad():
             model.eval()
+            self.node_graph = None
 
             # preparation some constant
             batch_size = roots.num
@@ -212,3 +216,9 @@ class SampledEfficientZeroMCTSPtree(object):
                     current_latent_state_index, discount_factor, value_prefix_batch, value_batch, policy_logits_batch,
                     min_max_stats_lst, results, is_reset_list, virtual_to_play
                 )
+                
+            self.current_step += 1
+            plot_root = roots.roots[0]
+            if self.use_node_graph:
+                #plot_simulation_graph(plot_root, self.current_step, graph_directory=None)
+                self.node_graph = generate_node_net(plot_root)
