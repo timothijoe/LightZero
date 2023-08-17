@@ -14,6 +14,7 @@ class MacroDefaultVehicle(DefaultVehicle):
         self.last_spd = 0
         self.last_macro_position = self.last_position
         self.v_wps = [[0,0], [1,1]]
+        self.mcts_trajs =None 
         self.v_indx = 1
         self.physics_world_step_size = self.engine.global_config["physics_world_step_size"]
         self.penultimate_state = {}

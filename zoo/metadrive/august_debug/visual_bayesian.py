@@ -8,7 +8,7 @@ TRAJ_CONTROL_MODE = 'acc'
 SEQ_TRAJ_LEN = 10
 
 continuous_action_space = True
-K = 10  # num_of_sampled_actions
+K = 3  # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
@@ -27,7 +27,7 @@ pendulum_sampled_efficientzero_config = dict(
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
-        obs_shape = [6, 200, 200],
+        obs_shape = [5, 200, 200],
         manually_discretization=False,
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
@@ -51,12 +51,12 @@ pendulum_sampled_efficientzero_config = dict(
             crash_vehicle_penalty = 4.0,
             out_of_road_penalty = 5.0,
             use_cross_line_penalty=True,
-            use_explicit_vel_obs = True,
+            use_explicit_vel_obs = False,
         ),
     ),
     policy=dict(
         model=dict(
-            observation_shape=[6, 200, 200],
+            observation_shape=[5, 200, 200],
             action_space_size=3,
             continuous_action_space=continuous_action_space,
             num_of_sampled_actions=K,
@@ -118,13 +118,24 @@ pendulum_sampled_efficientzero_create_config = EasyDict(pendulum_sampled_efficie
 create_config = pendulum_sampled_efficientzero_create_config
 
 
+# if __name__ == "__main__":
+#     # Users can use different train entry by specifying the entry_type.
+#     entry_type = "train_muzero"  # options={"train_muzero", "train_muzero_with_gym_env"}
+
+#     if entry_type == "train_muzero":
+#         from lzero.entry.train_metadrive import train_muzero
+#     elif entry_type == "train_muzero_with_gym_env":
+#         from lzero.entry.train_metadrive import train_muzero
+
+#     train_muzero([main_config, create_config], seed=0, max_env_step=max_env_step)
+    
 if __name__ == "__main__":
     # Users can use different train entry by specifying the entry_type.
     entry_type = "train_muzero"  # options={"train_muzero", "train_muzero_with_gym_env"}
 
     if entry_type == "train_muzero":
-        from lzero.entry.train_metadrive import train_muzero
-    elif entry_type == "train_muzero_with_gym_env":
-        from lzero.entry.train_metadrive import train_muzero
+        # from lzero.entry import train_muzero
+        from lzero.entry.eval_metadrive import eval_metadrive
+    zt_path = '/home/hunter/obelisk/data_ckpt/f_server/ckpt_best_v65.pth.tar'
 
-    train_muzero([main_config, create_config], seed=0, max_env_step=max_env_step)
+    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=5)

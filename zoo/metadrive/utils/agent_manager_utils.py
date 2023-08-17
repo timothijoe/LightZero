@@ -40,8 +40,6 @@ class MacroAgentManager(AgentManager):
             action = policy.act(agent_id, frame, waypoints)
             step_infos[agent_id] = policy.get_action_info()
             step_infos[agent_id].update(self.get_agent(agent_id).before_step(action))
-            
-
         finished = set()
         for v_name in self._dying_objects.keys():
             self._dying_objects[v_name][1] -= 1

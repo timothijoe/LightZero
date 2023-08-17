@@ -81,8 +81,10 @@ def process_node(starting_state, latent_action):
     latent_action = np.array(latent_action)
     starting_state = starting_state.reshape(1, -1)
     starting_state = np.repeat(starting_state, child_num, axis = 0)
+    starting_state_taec = copy.deepcopy(starting_state)
+    starting_state_taec[:, :3] = 0
     latent_action_torch = torch.from_numpy(latent_action).to(torch.float32)
-    starting_state_torch = torch.from_numpy(starting_state).to(torch.float32)
+    starting_state_torch = torch.from_numpy(starting_state_taec).to(torch.float32)
     with torch.no_grad():
         traj = _traj_decoder(latent_action_torch, starting_state_torch)
     traj = traj.numpy()
@@ -321,6 +323,7 @@ class MetaDriveTrajEnv(BaseEnv):
         # self.vae_decoder.load_state_dict(torch.load(vae_load_dir))
         self.vel_speed = 0.0
         self.z_state = np.zeros(6)
+        self.z_xyt = np.zeros(3)
         self.avg_speed = self.config["avg_speed"]
         vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
         self._traj_decoder = VaeDecoder(
@@ -358,6 +361,9 @@ class MetaDriveTrajEnv(BaseEnv):
         if self.config["zt_mcts"]:
             if isinstance(actions, dict):
                 starting_state = copy.deepcopy(self.z_state)
+                starting_state[0] = self.z_xyt[0]
+                starting_state[1] = self.z_xyt[1]
+                starting_state[2] = self.z_xyt[2]
                 node_graph = actions['node_graph']
                 zt_traj_total = []
                 traverse_dict(node_graph, starting_state, zt_traj_total)
@@ -716,6 +722,11 @@ class MetaDriveTrajEnv(BaseEnv):
         theta_dot = (theta_t2 - theta_t1) * t_inverse
         v_state[5] = np.arctan(2.5 * theta_dot / v_t2) if v_t2 > 0.001 else 0.0
         self.z_state = v_state
+        xyt = np.zeros(3)
+        xyt[0] = vehicle.traj_wp_list[-1]['position'][0]
+        xyt[1] = vehicle.traj_wp_list[-1]['position'][1]
+        xyt[2] = vehicle.traj_wp_list[-1]['yaw']
+        self.z_xyt = xyt
         if hasattr(vehicle, 'vis_state'):
             vehicle.vis_state = copy.deepcopy(self.z_state)
 
@@ -923,8 +934,8 @@ class MetaDriveTrajEnv(BaseEnv):
         # for vid in actions.keys():
         #     wps[vid] = wp_list
         wps = actions
-        if isinstance(actions['default_agent'], dict):
-            wps['default_agent'] = actions['default_agent']['raw_traj']
+        # if isinstance(actions['default_agent'], dict):
+        #     wps['default_agent'] = actions['default_agent']['raw_traj']
         for frame in range(frames):
             # we use frame to update robot position, and use wps to represent the whole trajectory
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
@@ -1010,6 +1021,7 @@ class MetaDriveTrajEnv(BaseEnv):
         self.navi_distance = 100.0
         self.remove_init_stop = True
         self.episode_max_step = self.config['episode_max_step']
+        self.z_xyt = np.zeros(3)
         if self.remove_init_stop:
             return o_reset
         return o_reset

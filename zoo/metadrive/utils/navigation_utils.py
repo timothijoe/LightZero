@@ -22,6 +22,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         seq_traj_len = 30,
         show_seq_traj = False,
         enable_u_turn = False,
+        mcts_traj_num = 10,
         ):
         super(NodeNetworkNavigation, self).__init__(engine, show_navi_mark, random_navi_mark_color, show_dest_mark, show_line_to_dest)
         self._show_traj = show_seq_traj
@@ -29,6 +30,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         self.enable_u_turn = enable_u_turn 
         self.u_turn_case = False
         self.should_redraw = False 
+        self.mcts_traj_num = mcts_traj_num
         if self._show_traj:
             self._init_trajs()
 
@@ -43,6 +45,12 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             init_line.setColor(self.navi_mark_color[0], self.navi_mark_color[1], self.navi_mark_color[2], 0.7)
             self.__dict__['traj_{}'.format(i)] = NodePath(init_line.create())
             self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
+        for i in range(self.mcts_traj_num):
+            for j in range(self.seq_traj_len):
+                init_line = LineSegs()
+                init_line.setColor(self.navi_mark_color[0], self.navi_mark_color[1], self.navi_mark_color[2], 0.7)
+                self.__dict__['mcts_traj_{}_{}'.format(i,j)] = NodePath(init_line.create())
+                self.__dict__['mcts_traj_{}_{}'.format(i,j)].reparentTo(self.origin)
         init_line = LineSegs()
         init_line.setColor(0.5, 0.5, 0.5, 0.7)
         self.current_pos_marker = NodePath(init_line.create())
@@ -96,7 +104,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             self.__dict__['traj_{}'.format(i)].hide(CamMask.Shadow | CamMask.RgbCam)
             self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
 
-    def show_car_pos(self, wp_list, current_time_step):
+    def show_car_pos(self, wp_list, current_time_step, mcts_traj_list = None):
         #print(current_time_step)
         cx = wp_list[current_time_step][0]
         cy = wp_list[current_time_step][1]
@@ -129,6 +137,21 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             self.__dict__['traj_{}'.format(i)] = NodePath(lines.create(False))
             self.__dict__['traj_{}'.format(i)].hide(CamMask.Shadow | CamMask.RgbCam)
             self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
+        if mcts_traj_list is not None:
+            for i in range(self.mcts_traj_num):
+                for j in range(self.seq_traj_len):
+                    init_line = LineSegs()
+                    init_line.setColor(self.navi_mark_color[0], self.navi_mark_color[1], self.navi_mark_color[2], 0.7)
+                    # self.__dict__['mcts_traj_{}_{}'.format(i,j)] = NodePath(init_line.create())
+                    # self.__dict__['mcts_traj_{}_{}'.format(i,j)].reparentTo(self.origin)
+                    lines.setColor(0.3, 0.3, 0.5, 0.7)
+                    lines.moveTo(panda_position((mcts_traj_list[i][j][0], mcts_traj_list[i][j][1]), self.LINE_TO_DEST_HEIGHT - 0.3))
+                    lines.drawTo(panda_position((mcts_traj_list[i][j+1][0], mcts_traj_list[i][j+1][1]), self.LINE_TO_DEST_HEIGHT - 0.3))
+                    lines.setThickness(0.8)
+                    self.__dict__['mcts_traj_{}_{}'.format(i,j)].removeNode()
+                    self.__dict__['mcts_traj_{}_{}'.format(i,j)] = NodePath(lines.create(False))
+                    self.__dict__['mcts_traj_{}_{}'.format(i,j)].hide(CamMask.Shadow | CamMask.RgbCam)
+                    self.__dict__['mcts_traj_{}_{}'.format(i,j)].reparentTo(self.origin)
 
     def get_waypoint_list(self):
         x = np.arange(0, 50, 0.1)
@@ -206,7 +229,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
                     #self.draw_car_path(ego_vehicle.v_wps)
                     self.activate_car_pos_marker = True
                 if self.activate_car_pos_marker:
-                    self.show_car_pos(ego_vehicle.v_wps, ego_vehicle.v_indx)
+                    self.show_car_pos(ego_vehicle.v_wps, ego_vehicle.v_indx, ego_vehicle.mcts_trajs)
 
                 # if ego_vehicle.v_indx == 4:
                 #     print('zt')

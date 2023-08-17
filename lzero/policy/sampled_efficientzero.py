@@ -1187,6 +1187,7 @@ class SampledEfficientZeroPolicy(Policy):
             else:
                 roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
+            zt_node_graph = self._mcts_eval.node_graph 
 
             roots_visit_count_distributions = roots.get_distributions(
             )  # shape: ``{list: batch_size} ->{list: action_space_size}``
@@ -1241,7 +1242,10 @@ class SampledEfficientZeroPolicy(Policy):
                         action = int(action)
                     elif len(action.shape) == 1:
                         action = int(action[0])
-
+                zt_action = action
+                action = {}
+                action['decision'] = zt_action
+                action['node_graph'] = zt_node_graph
                 output[env_id] = {
                     'action': action,
                     'distributions': distributions,
