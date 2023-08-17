@@ -377,8 +377,9 @@ class MetaDriveTrajEnv(BaseEnv):
             traj = traj[0,:,:2]
             traj_cpu = traj.detach().to('cpu').numpy()
             actions = traj_cpu
-        
-        
+            actions = {}
+            actions['mcts_trajs'] = zt_traj_total 
+            actions['raw_traj'] = traj_cpu 
         
         # if not isinstance(actions,list):
         #     action_seq = []
@@ -922,6 +923,8 @@ class MetaDriveTrajEnv(BaseEnv):
         # for vid in actions.keys():
         #     wps[vid] = wp_list
         wps = actions
+        if isinstance(actions['default_agent'], dict):
+            wps['default_agent'] = actions['default_agent']['raw_traj']
         for frame in range(frames):
             # we use frame to update robot position, and use wps to represent the whole trajectory
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
