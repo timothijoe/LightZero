@@ -7,6 +7,7 @@ from easydict import EasyDict
 
 from lzero.mcts.ctree.ctree_sampled_efficientzero import ezs_tree as tree_efficientzero
 from lzero.policy import InverseScalarTransform, to_detach_cpu_numpy
+from lzero.mcts.utils import plot_simulation_graph, generate_node_net
 
 if TYPE_CHECKING:
     from lzero.mcts.ctree.ctree_sampled_efficientzero import ezs_tree as ezs_ctree
@@ -207,3 +208,8 @@ class SampledEfficientZeroMCTSCtree(object):
                     current_latent_state_index, discount_factor, value_prefix_pool, value_pool, policy_logits_pool,
                     min_max_stats_lst, results, is_reset_list, virtual_to_play_batch
                 )
+                
+                # plot_root = roots.roots[0]
+                # if self.use_node_graph:
+                #     #plot_simulation_graph(plot_root, self.current_step, graph_directory=None)
+                #     self.node_graph = generate_node_net(plot_root)

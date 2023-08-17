@@ -217,8 +217,9 @@ class SampledEfficientZeroMCTSPtree(object):
                     min_max_stats_lst, results, is_reset_list, virtual_to_play
                 )
                 
-            self.current_step += 1
+            #self.current_step += 1
             plot_root = roots.roots[0]
             if self.use_node_graph:
                 #plot_simulation_graph(plot_root, self.current_step, graph_directory=None)
                 self.node_graph = generate_node_net(plot_root)
+                #self.current_step += 1

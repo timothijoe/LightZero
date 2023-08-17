@@ -357,6 +357,8 @@ class MetaDriveTrajEnv(BaseEnv):
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
         self.episode_steps += 1
         
+        time_0 = time.time() 
+        
         
         if self.config["zt_mcts"]:
             if isinstance(actions, dict):
@@ -385,6 +387,7 @@ class MetaDriveTrajEnv(BaseEnv):
             actions = traj_cpu
             actions = {}
             actions['mcts_trajs'] = zt_traj_total 
+            #actions['mcts_trajs'] = None  
             actions['raw_traj'] = traj_cpu 
         
         # if not isinstance(actions,list):
@@ -409,8 +412,20 @@ class MetaDriveTrajEnv(BaseEnv):
         #     trajs = torch.squeeze(trajs, 0)
         #     actions = trajs.numpy()
         macro_actions = self._preprocess_macro_waypoints(actions)
+        time_1 = time.time() 
         step_infos = self._step_macro_simulator(macro_actions)
+        time_2 = time.time() 
         o, r, d, i = self._get_step_return(actions, step_infos)
+        time_3 = time.time() 
+        
+        execution_time_1 = time_1 - time_0
+        print('execution_time_1: {}'.format(execution_time_1))
+        execution_time_2 = time_2 - time_0
+        print('execution_time_2: {}'.format(execution_time_2))
+        execution_time_3 = time_3 - time_0
+        print('execution_time_3: {}'.format(execution_time_3))
+        
+        
         self.step_num = self.step_num + 1
         self.episode_rwd = self.episode_rwd + r 
         #print('step number is: {}'.format(self.step_num))
