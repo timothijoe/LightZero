@@ -22,7 +22,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         seq_traj_len = 30,
         show_seq_traj = False,
         enable_u_turn = False,
-        mcts_traj_num = 10,
+        mcts_traj_num = 30,
         ):
         super(NodeNetworkNavigation, self).__init__(engine, show_navi_mark, random_navi_mark_color, show_dest_mark, show_line_to_dest)
         self._show_traj = show_seq_traj

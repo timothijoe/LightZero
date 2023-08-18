@@ -8,11 +8,11 @@ TRAJ_CONTROL_MODE = 'acc'
 SEQ_TRAJ_LEN = 10
 
 continuous_action_space = True
-K = 5  # num_of_sampled_actions
+K = 10  # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
-num_simulations = 20
+num_simulations = 30
 update_per_collect = 5
 batch_size = 256 #256
 max_env_step = int(1e6)

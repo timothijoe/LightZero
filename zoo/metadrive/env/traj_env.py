@@ -88,7 +88,7 @@ def process_node(starting_state, latent_action):
     with torch.no_grad():
         traj = _traj_decoder(latent_action_torch, starting_state_torch)
     traj = traj.numpy()
-    starting_point = starting_state[:,:4]
+    starting_point = starting_state_taec[:,:4]
     starting_point = np.expand_dims(starting_point, axis = 1)
     traj = np.concatenate((starting_point, traj), axis=1)
     convert_traj_list = []
