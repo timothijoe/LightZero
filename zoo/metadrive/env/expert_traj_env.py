@@ -10,7 +10,8 @@ from gym.envs.registration import register
 import logging
 
 from zoo.metadrive.utils.discrete_policy import DiscreteMetaAction
-from zoo.metadrive.utils.agent_manager_utils import MacroAgentManager
+# from zoo.metadrive.utils.agent_manager_utils import MacroAgentManager
+from zoo.metadrive.expert_utils.expert_agent_manager_utils import ExpertAgentManager as MacroAgentManager
 from zoo.metadrive.utils.engine_utils import initialize_engine, close_engine, \
     engine_initialized, set_global_random_seed, MacroBaseEngine
 from zoo.metadrive.utils.traffic_manager_utils import TrafficMode
@@ -34,6 +35,7 @@ from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
 
 vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+vae_load_dir = '/home/hunter/hoffung/LightZero/' + vae_load_dir 
 _traj_decoder = VaeDecoder(
             embedding_dim = 64,
             h_dim = 64,
@@ -304,11 +306,29 @@ class MetaDriveTrajEnv(BaseEnv):
         self.time = 0
         self.step_num = 0
         self.episode_rwd = 0
+        # self.vae_decoder = VaeDecoder(
+        #         embedding_dim = 64,
+        #         h_dim = 64,
+        #         latent_dim = 2,
+        #         seq_len = self.config['seq_traj_len'],
+        #         dt = 0.1
+        #     )
+        # # vae_load_dir = 'ckpt_files/a79_decoder_ckpt'
+        # # vae_load_dir = '/home/SENSETIME/zhoutong/hoffnung/xad/ckpt_files/seq_len_20_79_decoder_ckpt'
+        # if self.config['seq_traj_len'] == 10:
+        #     vae_load_dir = 'ckpt_files/seq_len_10_decoder_ckpt'
+        # elif self.config['seq_traj_len'] == 15:
+        #     vae_load_dir = 'ckpt_files/seq_len_15_78_decoder_ckpt'
+        # else:
+        #     assert self.config['seq_traj_len'] == 20
+        #     vae_load_dir = 'ckpt_files/seq_len_20_79_decoder_ckpt'
+        # self.vae_decoder.load_state_dict(torch.load(vae_load_dir))
         self.vel_speed = 0.0
         self.z_state = np.zeros(6)
         self.z_xyt = np.zeros(3)
         self.avg_speed = self.config["avg_speed"]
         vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+        vae_load_dir = '/home/hunter/hoffung/LightZero/' + vae_load_dir 
         self._traj_decoder = VaeDecoder(
             embedding_dim = 64,
             h_dim = 64,
@@ -339,76 +359,12 @@ class MetaDriveTrajEnv(BaseEnv):
 
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
         self.episode_steps += 1
-        
-        time_0 = time.time() 
-        
-        
-        if self.config["zt_mcts"]:
-            if isinstance(actions, dict):
-                starting_state = copy.deepcopy(self.z_state)
-                starting_state[0] = self.z_xyt[0]
-                starting_state[1] = self.z_xyt[1]
-                starting_state[2] = self.z_xyt[2]
-                node_graph = actions['node_graph']
-                zt_traj_total = []
-                traverse_dict(node_graph, starting_state, zt_traj_total)
-                print(len(zt_traj_total))
-                actions = actions['decision']
-            init_state = copy.deepcopy(self.z_state)
-            # (6)
-            init_state = torch.from_numpy(init_state).to(torch.float32)
-            # (1,6)
-            init_state = init_state.unsqueeze(0)
-            latent_action = torch.from_numpy(actions)
-            latent_action = latent_action.unsqueeze(0).to(torch.float32)
-            with torch.no_grad():
-                traj = self._traj_decoder(latent_action, init_state)
-            init_state = init_state[:,:4]
-            traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
-            traj = traj[0,:,:2]
-            traj_cpu = traj.detach().to('cpu').numpy()
-            actions = traj_cpu
-            actions = {}
-            actions['mcts_trajs'] = zt_traj_total 
-            #actions['mcts_trajs'] = None  
-            actions['raw_traj'] = traj_cpu 
-        
-        # if not isinstance(actions,list):
-        #     action_seq = []
-        #     for i in range(31):
-        #         action_seq.append([actions[2 * i], actions[2 *i+1]])
-        #     actions = action_seq
-        #action_seq =  np.array(action_seq)
-        # init_state = np.zeros([1, 4])
-        # init_state[0,3] = self.vel_speed
-        # init_state = torch.from_numpy(init_state)
-        #actions = np.array([1,1])
-        # if isinstance(actions, np.ndarray):
-        #     batch_action = torch.from_numpy(actions)
-        #     batch_action = torch.unsqueeze(batch_action, 0)
-        #     batch_action = batch_action.to(torch.float32)
-        #     init_state = init_state.to(torch.float32)
-        #     with torch.no_grad():
-        #         trajs = self.vae_decoder(batch_action, init_state)
-        #     trajs = torch.cat([init_state.unsqueeze(1), trajs], dim = 1)
-        #     trajs = trajs[:,:,:2]
-        #     trajs = torch.squeeze(trajs, 0)
-        #     actions = trajs.numpy()
         macro_actions = self._preprocess_macro_waypoints(actions)
         time_1 = time.time() 
         step_infos = self._step_macro_simulator(macro_actions)
         time_2 = time.time() 
         o, r, d, i = self._get_step_return(actions, step_infos)
         time_3 = time.time() 
-        
-        execution_time_1 = time_1 - time_0
-        print('execution_time_1: {}'.format(execution_time_1))
-        execution_time_2 = time_2 - time_0
-        print('execution_time_2: {}'.format(execution_time_2))
-        execution_time_3 = time_3 - time_0
-        print('execution_time_3: {}'.format(execution_time_3))
-        
-        
         self.step_num = self.step_num + 1
         self.episode_rwd = self.episode_rwd + r 
         #print('step number is: {}'.format(self.step_num))
@@ -564,62 +520,9 @@ class MetaDriveTrajEnv(BaseEnv):
         long_last, _ = current_lane.local_coordinates(vehicle.last_macro_position)
         long_now, lateral_now = current_lane.local_coordinates(vehicle.position)
         self.already_go_dist += (long_now - long_last)
-        #print('already_go_dist: {}'.format(self.already_go_dist))
-        avg_lateral_cum = self.compute_avg_lateral_cum(vehicle, current_lane)
-        # use_lateral_penalty = False
-        # # reward for lane keeping, without it vehicle can learn to overtake but fail to keep in lane
-        if self.config["use_lateral"]:
-            lateral_factor = clip(1 - 0.5 * abs(avg_lateral_cum) / vehicle.navigation.get_current_lane_width(), 0.0, 1.0)
-            #lateral_factor = clip(1 - 2 * abs(lateral_now) / vehicle.navigation.get_current_lane_width(), 0.0, 1.0)
-        else:
-            lateral_factor = 1.0
+        lateral_factor = 1.0
         #     use_lateral_penalty = True
         reward = 0.0
-        driving_reward = 0.0
-        speed_reward = 0.0
-        heading_reward = 0.0
-        jerk_reward = 0.0 
-        # Generally speaking, driving reward is a necessity
-        driving_reward += self.config["driving_reward"] * (long_now - long_last) * lateral_factor * positive_road 
-        if self.config["use_cross_line_penalty"]:
-            if vehicle.on_broken_line:
-                driving_reward -= 0.4
-        # # Speed reward
-        if self.config["use_speed_reward"]:
-            max_spd = 10
-            speed_list = self.compute_speed_list(vehicle)
-            for speed in speed_list: 
-                speed_reward += self.config["speed_reward"] * (speed / max_spd) * positive_road  
-                if self.config['add_extra_speed_penalty']:
-                    if speed < self.avg_speed:
-                        speed_reward -= 0.12 
-                else: 
-                    if speed < self.avg_speed - 2:
-                        speed_reward -= 0.04 #0.06, 0.12
-        if self.config["use_heading_reward"]:
-            # Heading Reward
-            heading_error_list = self.compute_heading_error_list(vehicle, current_lane)
-            for heading_error in heading_error_list:
-                heading_reward += self.config["heading_reward"] * (0 - np.abs(heading_error))             
-        if self.config["use_jerk_reward"]:
-            jerk_list = self.compute_jerk_list(vehicle)
-            for jerk in jerk_list:
-                #jerk_reward += (0.03 - 0.6 * np.tanh(jerk / 100.0))
-                #jerk_reward += (0.03 - self.config["jerk_importance"] * np.tanh(jerk / self.config["jerk_dominator"]))
-                jerk_penalty = max(np.tanh((jerk-self.config["jerk_bias"])/self.config["jerk_dominator"]),0)
-                jerk_penalty = self.config["jerk_importance"] * jerk_penalty
-                jerk_reward -= jerk_penalty
-        reward = driving_reward + speed_reward + heading_reward + jerk_reward 
-        if self.config['debug_info']:
-            print('#####################################################################################')
-            print('driving reward: {}'.format(driving_reward))
-            print('speed reward: {}'.format(speed_reward))
-            print('heading reward: {}'.format(heading_reward))
-            print('jerk reward: {}'.format(jerk_reward))
-            print('max step: {}'.format(self.episode_max_step))
-            print('current step: {}'.format(self.step_num))
-            print('total reward: {}'.format(reward))
-        # print('speed: {}'.format(speed))
         step_info["step_reward"] = reward 
         append_rwd = 0.4 * (self.episode_max_step - self.step_num)
         if append_rwd < 0.0:
