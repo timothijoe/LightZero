@@ -16,9 +16,9 @@ class ExpertIDMPolicy(IDMPolicy):
     KP_LATERAL = 1 / TAU_LATERAL  # [1/s]
     MAX_STEERING_ANGLE = np.pi / 3  # [rad]
     DELTA_SPEED = 5  # [m/s]
-    DISTANCE_WANTED = 10.0
+    DISTANCE_WANTED = 2.0 #10.0
     """Desired jam distance to the front vehicle."""
-    TIME_WANTED = 1.5  # [s]
+    TIME_WANTED =  0.5#1.5  # [s]
     """Desired time gap to the front v"""
     DELTA = 10.0  # []
     """Exponent of the velocity term."""
@@ -27,8 +27,8 @@ class ExpertIDMPolicy(IDMPolicy):
 
     # Lateral policy parameters
     LANE_CHANGE_FREQ = 50  # [step]
-    LANE_CHANGE_SPEED_INCREASE = 10
-    SAFE_LANE_CHANGE_DISTANCE = 15
+    LANE_CHANGE_SPEED_INCREASE = 2
+    SAFE_LANE_CHANGE_DISTANCE = 10
     MAX_LONG_DIST = 30
     MAX_SPEED = 100
     # Normal speed
