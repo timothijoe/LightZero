@@ -19,7 +19,7 @@ if __name__ == "__main__":
         # controller="joystick",
         use_render=True,
         manual_control=True,
-        traffic_density=0.3,
+        traffic_density=0.4,
         environment_num=100,
         random_agent_model=True,
         random_lane_width=True,
