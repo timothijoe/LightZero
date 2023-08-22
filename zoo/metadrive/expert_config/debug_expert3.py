@@ -19,13 +19,13 @@ if __name__ == "__main__":
         # controller="joystick",
         use_render=True,
         manual_control=True,
-        traffic_density=0.4,
+        traffic_density=0.5,
         environment_num=100,
         random_agent_model=True,
         random_lane_width=True,
         random_lane_num=True,
         # map=4,  # seven block
-        #map='OSOS',
+        map='OSOS',
         #map='SXSX',
         start_seed=random.randint(0, 1000)
     )
