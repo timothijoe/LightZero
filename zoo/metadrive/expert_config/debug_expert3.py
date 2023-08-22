@@ -13,20 +13,22 @@ import numpy as np
 from metadrive import MetaDriveEnv
 from zoo.metadrive.env.expert_traj_env import MetaDriveTrajEnv
 from metadrive.constants import HELP_MESSAGE
-
+from zoo.metadrive.utils.traffic_manager_utils import TrafficMode
 if __name__ == "__main__":
     config = dict(
         # controller="joystick",
         use_render=True,
         manual_control=True,
-        traffic_density=0.5,
+        traffic_density=0.45,
         environment_num=100,
         random_agent_model=True,
         random_lane_width=True,
         random_lane_num=True,
         # map=4,  # seven block
-        map='OSOS',
-        #map='SXSX',
+        #map='OSOS',
+        map='SXSX',
+        enable_u_turn = True,
+        traffic_mode = TrafficMode.Trigger,
         start_seed=random.randint(0, 1000)
     )
     parser = argparse.ArgumentParser()

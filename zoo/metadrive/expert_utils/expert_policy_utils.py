@@ -42,9 +42,9 @@ class ExpertIDMPolicy(IDMPolicy):
 
     def __init__(self, control_object, random_seed):
         super(ExpertIDMPolicy, self).__init__(control_object=control_object, random_seed=random_seed)
-        self.NORMAL_SPEED_CONST = 27 #15
+        self.NORMAL_SPEED_CONST = 27#27 #15
         self.NORMAL_SPEED = self.NORMAL_SPEED_CONST
-        self.LANE_CHANGE_FREQ = 100
+        self.LANE_CHANGE_FREQ = 100#100
         self.heading_pid = PIDController(1.2, 0.01, 2.5)
         self.lateral_pid = PIDController(0.2, .002, 0.05)
 
