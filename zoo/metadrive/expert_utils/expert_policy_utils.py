@@ -258,13 +258,13 @@ class ExpertIDMPolicy(IDMPolicy):
             ) else self.MAX_SPEED
             left_front_speed = surrounding_objects.left_front_object().speed if surrounding_objects.has_left_front_object() else self.MAX_SPEED \
                 if surrounding_objects.left_lane_exist() and surrounding_objects.left_front_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE else None
-            if left_front_speed is not None and surrounding_objects.left_front_min_distance() - surrounding_objects.front_min_distance() >0:
+            if left_front_speed is not None and surrounding_objects.left_front_min_distance() - surrounding_objects.front_min_distance() >0 and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE:
                 # left overtake has a high priority
                 expect_lane_idx = current_lanes.index(self.routing_target_lane) - 1
                 if expect_lane_idx in self.available_routing_index_range:
                     return surrounding_objects.left_front_object(), surrounding_objects.left_front_min_distance(), \
                            current_lanes[expect_lane_idx]
-            if right_front_speed is not None and surrounding_objects.right_front_min_distance() - surrounding_objects.front_min_distance() >0:
+            if right_front_speed is not None and surrounding_objects.right_front_min_distance() - surrounding_objects.front_min_distance() >0 and surrounding_objects.right_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE:
                 expect_lane_idx = current_lanes.index(self.routing_target_lane) + 1
                 if expect_lane_idx in self.available_routing_index_range:
                     return surrounding_objects.right_front_object(), surrounding_objects.right_front_min_distance(), \
@@ -337,6 +337,6 @@ class ExpertIDMPolicy(IDMPolicy):
             if distance < collision_thred:
                 #collision = True
                 collision_label = calculate_fine_collision(self.control_object, other_vehicle, e_fp, o_fp)
-                if collision_label:
-                    collision = True
+                # if collision_label:
+                #     collision = True
         return collision 
