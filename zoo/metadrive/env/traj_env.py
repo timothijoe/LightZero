@@ -32,6 +32,7 @@ from metadrive.utils.utils import auto_termination
 import torch
 from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
+import time 
 
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
@@ -138,6 +139,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     use_jerk_reward = False,
     ignore_first_steer = False,
     add_extra_speed_penalty = False,
+    use_explicit_vel_obs = False,
 )
 
 
@@ -248,6 +250,7 @@ class MetaDriveTrajEnv(BaseEnv):
 
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
         self.episode_steps += 1
+        time_0 = time.time() 
         
         
         if self.config["zt_mcts"]:
@@ -290,8 +293,19 @@ class MetaDriveTrajEnv(BaseEnv):
         #     trajs = torch.squeeze(trajs, 0)
         #     actions = trajs.numpy()
         macro_actions = self._preprocess_macro_waypoints(actions)
+        time_1 = time.time()
         step_infos = self._step_macro_simulator(macro_actions)
+        time_2 = time.time() 
         o, r, d, i = self._get_step_return(actions, step_infos)
+        time_3 = time.time()
+
+        execution_time_1 = time_1 - time_0
+        print('execution_time_1: {}'.format(execution_time_1))
+        execution_time_2 = time_2 - time_0
+        print('execution_time_2: {}'.format(execution_time_2))
+        execution_time_3 = time_3 - time_0
+        print('execution_time_3: {}'.format(execution_time_3))        
+        
         self.step_num = self.step_num + 1
         self.episode_rwd = self.episode_rwd + r 
         #print('step number is: {}'.format(self.step_num))
@@ -689,6 +703,14 @@ class MetaDriveTrajEnv(BaseEnv):
             _, cost_infos[v_id] = self.cost_function(v_id)
             done = done_function_result or self.dones[v_id]
             self.dones[v_id] = done
+            if self.config['use_explicit_vel_obs']:
+                max_spd = 10
+                cur_spd = self.z_state[3]
+                max_steer = 1.0
+                cur_steer = self.z_state[5]
+                obses['default_agent']['birdview'][:,:, 4] = 0.0
+                obses['default_agent']['birdview'][:,10:50, 4]=1.0
+                obses['default_agent']['birdview'][:,50:90, 4]=0.5
             if done:
                 obses['default_agent']['birdview'][:,:10, 4]=1.0
 

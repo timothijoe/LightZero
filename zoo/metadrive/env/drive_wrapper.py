@@ -66,6 +66,7 @@ class DriveEnvWrapper(gym.Wrapper):
             self.show_bird_view = True
         else:
             self.show_bird_view = False
+        #self.show_bird_view = True
         self.action_space = self.env.action_space
         self.env = env
 
@@ -114,7 +115,8 @@ class DriveEnvWrapper(gym.Wrapper):
         action = to_ndarray(action)
         obs, rew, done, info = self.env.step(action)
         if self.show_bird_view:
-            draw_multi_channels_top_down_observation(obs, show_time=0.5)
+            obs_to_draw = obs['birdview']
+            draw_multi_channels_top_down_observation(obs_to_draw, show_time=0.5)
         self._eval_episode_return += rew
         obs = to_ndarray(obs, dtype=np.float32)
         if isinstance(obs, np.ndarray) and len(obs.shape) == 3:

@@ -52,6 +52,7 @@ pendulum_sampled_efficientzero_config = dict(
             image_channel=5,
         ),
         cuda=True,
+        mcts_ctree = False,
         use_expert = True,
         env_type='not_board_games',
         game_segment_length=50,
