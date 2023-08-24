@@ -286,6 +286,15 @@ class Node:
         return len(self.children) > 0
 
     @property
+    def all_children_expanded(self) -> bool:
+        return all(child.expanded for child in self.children.values())
+
+    @property
+    def all_children_exhausted(self) -> bool:
+        return all(child.all_children_expanded for child in self.children.values())
+
+
+    @property
     def value(self) -> float:
         """
         Overview:
@@ -660,16 +669,28 @@ def batch_traverse(
             The leaf node is the node that is currently not expanded.
         """
         while node.expanded:
-
-            mean_q = node.compute_mean_q(is_root, parent_q, discount_factor)
-            is_root = 0
-            parent_q = mean_q
-
-            # select action according to the pUCT rule
-            action = select_child(
-                node, min_max_stats_lst.stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players,
-                continuous_action_space
-            )
+            if(len(results.search_paths[i]) == 1):
+                # node.all_children_expanded = all(child.expanded for child in node.children.values())
+                if not node.all_children_expanded:
+                    action, child_node = next((action, child_node) for action, child_node in node.children.items() if not child_node.expanded)
+                else:
+                    mean_q = node.compute_mean_q(is_root, parent_q, discount_factor)
+                    is_root = 0
+                    parent_q = mean_q
+                    # select action according to the pUCT rule
+                    action = select_child(
+                        node, min_max_stats_lst.stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players,
+                        continuous_action_space
+                    )
+            else:
+                mean_q = node.compute_mean_q(is_root, parent_q, discount_factor)
+                is_root = 0
+                parent_q = mean_q
+                # select action according to the pUCT rule
+                action = select_child(
+                    node, min_max_stats_lst.stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players,
+                    continuous_action_space
+                )
 
             if players == 2:
                 # Players play turn by turn

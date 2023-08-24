@@ -101,6 +101,34 @@ def prepare_observation(observation_list, model_type='conv'):
     return observation_array
 
 
+# def obtain_tree_topology(root, to_play=-1):
+#     node_stack = []
+#     edge_topology_list = []
+#     node_topology_list = []
+#     node_id_list = []
+#     node_stack.append(root)
+#     while len(node_stack) > 0:
+#         node = node_stack[-1]
+#         node_stack.pop()
+#         node_dict = {}
+#         node_dict['node_id'] = node.simulation_index
+#         node_dict['visit_count'] = node.visit_count
+#         node_dict['policy_prior'] = node.prior
+#         node_dict['value'] = node.value
+#         node_topology_list.append(node_dict)
+
+#         node_id_list.append(node.simulation_index)
+#         for a in node.legal_actions:
+#             child = node.get_child(a)
+#             if child.expanded:
+#                 child.parent_simulation_index = node.simulation_index
+#                 edge_dict = {}
+#                 edge_dict['parent_id'] = node.simulation_index
+#                 edge_dict['child_id'] = child.simulation_index
+#                 edge_topology_list.append(edge_dict)
+#                 node_stack.append(child)
+#     return edge_topology_list, node_id_list, node_topology_list
+
 def obtain_tree_topology(root, to_play=-1):
     node_stack = []
     edge_topology_list = []
@@ -113,7 +141,7 @@ def obtain_tree_topology(root, to_play=-1):
         node_dict = {}
         node_dict['node_id'] = node.simulation_index
         node_dict['visit_count'] = node.visit_count
-        node_dict['policy_prior'] = node.prior
+        node_dict['policy_prior'] = node.prior if type(node.prior) == int else node.prior.to('cpu').numpy()[0]
         node_dict['value'] = node.value
         node_topology_list.append(node_dict)
 
@@ -125,10 +153,10 @@ def obtain_tree_topology(root, to_play=-1):
                 edge_dict = {}
                 edge_dict['parent_id'] = node.simulation_index
                 edge_dict['child_id'] = child.simulation_index
+                edge_dict['latent_action'] = a 
                 edge_topology_list.append(edge_dict)
                 node_stack.append(child)
     return edge_topology_list, node_id_list, node_topology_list
-
 
 def plot_simulation_graph(env_root, current_step, graph_directory=None):
     edge_topology_list, node_id_list, node_topology_list = obtain_tree_topology(env_root)
