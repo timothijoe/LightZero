@@ -670,7 +670,20 @@ def batch_traverse(
         """
         while node.expanded:
             if(len(results.search_paths[i]) == 1):
-                # node.all_children_expanded = all(child.expanded for child in node.children.values())
+                if not node.all_children_expanded:
+                    action, child_node = next((action, child_node) for action, child_node in node.children.items() if not child_node.expanded)
+                elif not node.all_children_exhausted:
+                    action, child_node = next((action, child_node) for action, child_node in node.children.items() if not child_node.all_children_expanded)
+                else:
+                    mean_q = node.compute_mean_q(is_root, parent_q, discount_factor)
+                    is_root = 0
+                    parent_q = mean_q
+                    # select action according to the pUCT rule
+                    action = select_child(
+                        node, min_max_stats_lst.stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players,
+                        continuous_action_space
+                    )
+            elif(len(results.search_paths[i]) == 2):
                 if not node.all_children_expanded:
                     action, child_node = next((action, child_node) for action, child_node in node.children.items() if not child_node.expanded)
                 else:
