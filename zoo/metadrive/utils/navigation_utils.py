@@ -137,6 +137,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             self.__dict__['traj_{}'.format(i)] = NodePath(lines.create(False))
             self.__dict__['traj_{}'.format(i)].hide(CamMask.Shadow | CamMask.RgbCam)
             self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
+        mcts_traj_list = None
         if mcts_traj_list is not None:
             for i in range(self.mcts_traj_num):
                 for j in range(self.seq_traj_len):

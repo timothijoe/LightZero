@@ -220,6 +220,11 @@ class SampledEfficientZeroMCTSPtree(object):
             #self.current_step += 1
             plot_root = roots.roots[0]
             if self.use_node_graph:
+                import time 
+                start_time = time.time()
                 #plot_simulation_graph(plot_root, self.current_step, graph_directory=None)
                 self.node_graph = generate_node_net(plot_root)
+                end_time = time.time()
+                remaining_time = end_time - start_time 
+                print('remaining time : {}'.format(remaining_time))
                 #self.current_step += 1
