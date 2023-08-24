@@ -205,12 +205,18 @@ class ManualMacroDiscretePolicy(BasePolicy):
             macro_action = args[1]
         frame = args[1]
         wp_list = args[2]
+
+        if isinstance(wp_list, dict):
+            mcts_trajs = wp_list['mcts_trajs']
+            wp_list = wp_list['raw_traj']        
+        
         #print('waypoint list initial: {}, {}'.format(wp_list[0][0], wp_list[0][1]))
         ego_vehicle = self.control_object
         if frame ==0:
             self.base_pos = ego_vehicle.position
             self.base_heading = ego_vehicle.heading_theta
             self.control_object.v_wps = self.convert_waypoint_list_coord(self.base_pos, self.base_heading,wp_list, True)
+            self.control_object.mcts_trajs = mcts_trajs
             self.control_object.penultimate_state = self.control_object.traj_wp_list[-2] # if len(wp_list)>2 else self.control_object.traj_wp_list[-1]
             new_state = {}        
             new_state['position'] = ego_vehicle.position

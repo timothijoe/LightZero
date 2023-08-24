@@ -149,3 +149,25 @@ def plot_simulation_graph(env_root, current_step, graph_directory=None):
     graph_path = graph_directory + 'simulation_visualize_' + str(current_step) + 'step.gv'
     dot.format = 'png'
     dot.render(graph_path, view=False)
+
+def traverse_tree(node, motivation=None):
+    if node is None:
+        return {}
+    node_dict = {
+        "node_id": node.simulation_index,
+        "motivation": motivation.value if motivation is not None else None,
+        "value": node.value,
+        "visit_count": node.visit_count,
+        "policy_prior": node.prior if type(node.prior) == int else node.prior.to('cpu').numpy()[0],
+        "children": [],
+    }
+    for a in node.legal_actions:
+        child = node.get_child(a)
+        if child.expanded:
+            child_dict = traverse_tree(child, a)
+            node_dict["children"].append(child_dict)
+    return node_dict
+
+def generate_node_net(env_root):
+    print('node searching')
+    return traverse_tree(env_root)

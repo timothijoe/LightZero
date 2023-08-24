@@ -4,11 +4,11 @@ from easydict import EasyDict
 # begin of the most frequently changed config specified by the user
 # ==============================================================
 continuous_action_space = True
-K = 10  # num_of_sampled_actions
+K = 5 # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
-num_simulations = 50
+num_simulations = 30
 update_per_collect = 2
 batch_size = 8
 max_env_step = int(1e6)

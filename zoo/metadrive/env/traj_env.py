@@ -34,6 +34,103 @@ from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
 import time 
 
+
+vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+_traj_decoder = VaeDecoder(
+            embedding_dim = 64,
+            h_dim = 64,
+            latent_dim = 3,
+            seq_len = 10,
+            dt = 0.1,
+            traj_control_mode = 'acc',
+            one_side_class_vae=False,
+            steer_rate_constrain_value=0.5,
+        )
+_traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+
+def convert_wp_to_world_coord3d(wp, robot_pos):
+    odom_goal = [0.0, 0.0, 0.0]
+    local_goal = wp
+    delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
+    delta_angle = np.arctan2(local_goal[1], local_goal[0])
+    total_angle = delta_angle + robot_pos[2]
+    odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
+    odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
+    yaw_z = local_goal[2] + robot_pos[2]
+    odom_goal[2] = np.arctan2(np.sin(yaw_z), np.cos(yaw_z))
+    return odom_goal   
+
+def convert_wp_to_world_coord(wp, robot_pos):
+    odom_goal = [0.0, 0.0]
+    local_goal = wp
+    delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
+    delta_angle = np.arctan2(local_goal[1], local_goal[0])
+    total_angle = delta_angle + robot_pos[2]
+    odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
+    odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
+    return odom_goal        
+
+def convert_waypoint_list_coord(wp_list, rbt_pos):
+    # given the robot initial pos, we transfer the traj from origin to initial pos, and rotation
+    wp_w_list = []
+    for wp in wp_list:
+        wp_w = convert_wp_to_world_coord3d(wp, rbt_pos)
+        wp_w_list.append(wp_w)
+    return wp_w_list
+
+def process_node(starting_state, latent_action):
+    child_num = len(latent_action)
+    latent_action = np.array(latent_action)
+    starting_state = starting_state.reshape(1, -1)
+    starting_state = np.repeat(starting_state, child_num, axis = 0)
+    starting_state_taec = copy.deepcopy(starting_state)
+    starting_state_taec[:, :3] = 0
+    latent_action_torch = torch.from_numpy(latent_action).to(torch.float32)
+    starting_state_torch = torch.from_numpy(starting_state_taec).to(torch.float32)
+    with torch.no_grad():
+        traj = _traj_decoder(latent_action_torch, starting_state_torch)
+    traj = traj.numpy()
+    starting_point = starting_state_taec[:,:4]
+    starting_point = np.expand_dims(starting_point, axis = 1)
+    traj = np.concatenate((starting_point, traj), axis=1)
+    convert_traj_list = []
+    
+    for i in range(child_num):
+        single_starting = starting_state[i][:3]
+        single_traj = traj[i]
+        single_traj_3 = single_traj[:,:3]
+        single_traj_v = single_traj[:, 3:4]
+        single_traj_3 = list(single_traj_3)
+        convert_traj_3 = convert_waypoint_list_coord(single_traj_3, single_starting)
+        convert_traj_3 = np.array(convert_traj_3)
+        convert_traj_4 = np.concatenate((convert_traj_3, single_traj_v), axis=1)
+        convert_traj_list.append(convert_traj_4)
+    convert_traj_array = np.array(convert_traj_list)
+    return convert_traj_array 
+
+def traverse_dict(node_dict, starting_state, total_traj = []):
+    node_dict["starting_pose"] = starting_state[:4]
+    print('node id: {}'.format(node_dict["node_id"]))
+    # root node starting state ([x, y, theta, v]) w.r.t current car position
+    children = node_dict["children"]
+    if children is None:
+        return
+    child_latent_actions = []
+    index_fun = {}
+    index = 0
+    for child_dict in children:
+        child_latent_actions.append(child_dict["motivation"])
+        index_fun[index] = child_dict["node_id"]
+    traj_list = process_node(starting_state, child_latent_actions)
+    child_num = traj_list.shape[0]
+    for i in range(child_num):
+        traj_i = traj_list[i]
+        total_traj.append(traj_i)
+        starting_state_i = traj_i[-1]
+        traverse_dict(children[i], starting_state_i, total_traj)
+
+
+
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
     start_seed=0,
@@ -254,6 +351,18 @@ class MetaDriveTrajEnv(BaseEnv):
         
         
         if self.config["zt_mcts"]:
+            if isinstance(actions, dict):
+                node_graph = actions['node_graph']
+                actions = actions['decision']   
+                starting_state = copy.deepcopy(self.z_state)
+                starting_state[0] = self.z_xyt[0]
+                starting_state[1] = self.z_xyt[1]
+                starting_state[2] = self.z_xyt[2]
+                
+                zt_traj_total = []
+                traverse_dict(node_graph, starting_state, zt_traj_total)
+                print(len(zt_traj_total))         
+            
             init_state = copy.deepcopy(self.z_state)
             # (6)
             init_state = torch.from_numpy(init_state).to(torch.float32)
@@ -269,7 +378,11 @@ class MetaDriveTrajEnv(BaseEnv):
             traj_cpu = traj.detach().to('cpu').numpy()
             actions = traj_cpu
         
-        
+            actions = traj_cpu
+            actions = {}
+            actions['mcts_trajs'] = zt_traj_total 
+            # actions['mcts_trajs'] = None  
+            actions['raw_traj'] = traj_cpu        
         
         # if not isinstance(actions,list):
         #     action_seq = []
@@ -609,6 +722,11 @@ class MetaDriveTrajEnv(BaseEnv):
         theta_dot = (theta_t2 - theta_t1) * t_inverse
         v_state[5] = np.arctan(2.5 * theta_dot / v_t2) if v_t2 > 0.001 else 0.0
         self.z_state = v_state
+        xyt = np.zeros(3)
+        xyt[0] = vehicle.traj_wp_list[-1]['position'][0]
+        xyt[1] = vehicle.traj_wp_list[-1]['position'][1]
+        xyt[2] = vehicle.traj_wp_list[-1]['yaw']
+        self.z_xyt = xyt
         if hasattr(vehicle, 'vis_state'):
             vehicle.vis_state = copy.deepcopy(self.z_state)
 
