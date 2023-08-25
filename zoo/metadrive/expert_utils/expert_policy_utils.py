@@ -51,14 +51,27 @@ class ExpertIDMPolicy(IDMPolicy):
         self.use_const_ref = False
         self.need_reset_const_ref = False  
         self.const_ref = 0
+        self.variation_in_line_type = None 
+        self.misalign = False
         if self.control_object.navigation.expert_type == 'straight_agreesive':
             pass 
         elif self.control_object.navigation.expert_type == 'straight_wild':
             self.LANE_CHANGE_FREQ = 5000
-            self.TIME_WANTED = 1.5
-            self.DISTANCE_WANTED = 10.0
+            self.TIME_WANTED = 0.5
+            self.DISTANCE_WANTED = 3.0
             self.use_const_ref = True
             self.need_reset_const_ref = True 
+        elif self.control_object.navigation.expert_type == 'round_wild':
+            self.LANE_CHANGE_FREQ = 5000
+            self.TIME_WANTED = 0.5
+            self.DISTANCE_WANTED = 3.0
+            self.use_const_ref = True
+            self.need_reset_const_ref = True    
+            self.NORMAL_SPEED_CONST = 24     
+        elif self.control_object.navigation.expert_type == 'round_agressive':
+            self.NORMAL_SPEED_CONST = 30 
+            self.variation_in_line_type = False  
+            
             # current_lanes = self.control_object.navigation.current_ref_lanes
             # import random
             # self.label_ref_lane_num = random.randint(0, len(current_lanes))
@@ -153,6 +166,8 @@ class ExpertIDMPolicy(IDMPolicy):
         self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
         if self.use_const_ref is True:
             self.need_reset_const_ref = True 
+        if self.variation_in_line_type is not None:
+            self.variation_in_line_type = False
 
     # def lane_change_policy(self, all_objects):
     #     current_lanes = self.control_object.navigation.current_ref_lanes
@@ -236,6 +251,24 @@ class ExpertIDMPolicy(IDMPolicy):
         self.available_routing_index_range = [i for i in range(len(current_lanes))]
         next_lanes = self.control_object.navigation.next_ref_lanes
         lane_num_diff = len(current_lanes) - len(next_lanes) if next_lanes is not None else 0
+        
+        if self.variation_in_line_type is not None:
+            variate_type = False
+            zt_lane = self.control_object.lane
+            current_long = zt_lane.local_coordinates(self.control_object.position)[0]
+            lane_heading = zt_lane.heading_theta_at(current_long)
+            
+            
+            
+            v_heading = self.control_object.heading_theta
+            heading_err = np.abs(lane_heading - v_heading)
+            self.misalign = True if heading_err > 0.2 else False
+            self.misalign = False
+            if type(current_lanes[0]).__name__ != type(next_lanes[0]).__name__ :
+
+                if zt_lane.length - current_long < 20:
+                    variate_type = True
+            self.variation_in_line_type = variate_type
 
         # We have to perform lane changing because the number of lanes in next road is less than current road
         if lane_num_diff > 0:
@@ -318,6 +351,10 @@ class ExpertIDMPolicy(IDMPolicy):
             self.NORMAL_SPEED = self.NORMAL_SPEED_CONST
         else:
             self.NORMAL_SPEED = self.NORMAL_SPEED_CONST
+        if self.variation_in_line_type is not None:
+            if self.variation_in_line_type is True:
+                self.NORMAL_SPEED = 20
+                print('variate in line type')
 
     def steering_control(self, target_lane) -> float:
         # heading control following a lateral distance control
@@ -326,8 +363,8 @@ class ExpertIDMPolicy(IDMPolicy):
         #lane_heading = target_lane.heading_theta_at(long + 1)
         lane_heading = target_lane.heading_theta_at(long + 1)
         v_heading = ego_vehicle.heading_theta
-        steering = self.heading_pid.get_result(wrap_to_pi(lane_heading - v_heading))
-        steering += self.lateral_pid.get_result(-lat) * 0.5
+        steering = self.heading_pid.get_result(wrap_to_pi(lane_heading - v_heading)) * 1.5
+        steering += self.lateral_pid.get_result(-lat) * 0.6
         #print('zt')
         return float(steering)
 
@@ -377,6 +414,13 @@ class ExpertIDMPolicy(IDMPolicy):
             if distance < collision_thred:
                 #collision = True
                 collision_label = calculate_fine_collision(self.control_object, other_vehicle, e_fp, o_fp)
-                # if collision_label:
-                #     collision = True
+                if collision_label:
+                    if self.control_object.navigation.expert_type == 'round_wild':
+                        collision = True
+                    if self.control_object.navigation.expert_type == 'round_agressive':
+                        if self.variation_in_line_type is not None:
+                            if self.variation_in_line_type is True:
+                                collision = True
+                        if self.misalign:
+                            collision = True
         return collision 

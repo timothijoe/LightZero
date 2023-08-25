@@ -43,15 +43,15 @@ class MacroIDMPolicy(IDMPolicy):
         steering = self.steering_control(steering_target_lane)
         acc = self.acceleration(acc_front_obj, acc_front_dist)
         
-        # objs_interest = self.check_in_fan(all_objects)
-        # collision = False
-        # for other_vehicle in objs_interest:
-        #     if(self.check_single_collision(other_vehicle)):
-        #         collision = True 
+        objs_interest = self.check_in_fan(all_objects)
+        collision = False
+        for other_vehicle in objs_interest:
+            if(self.check_single_collision(other_vehicle)):
+                collision = True 
         steering = self.steering_control(steering_target_lane)
         acc = self.acceleration(acc_front_obj, acc_front_dist)
-        # if collision:
-        #     acc = -1.0        
+        if collision:
+            acc = -1.0        
         
         return [steering, acc]
 
@@ -114,6 +114,8 @@ class MacroIDMPolicy(IDMPolicy):
 
     def check_single_collision(self, other_vehicle):
         collision = False
+        if type(other_vehicle).__name__ != 'MacroDefaultVehicle':
+            return False
         for t in [1.0]:
             e_fp = self.get_ego_future_position(t)
             o_fp = self.get_future_position(other_vehicle, t)
@@ -122,6 +124,11 @@ class MacroIDMPolicy(IDMPolicy):
             if distance < collision_thred:
                 #collision = True
                 collision_label = calculate_fine_collision(self.control_object, other_vehicle, e_fp, o_fp)
-                # if collision_label:
-                #     collision = True
+                e_cp = self.get_ego_future_position(0.0)
+                o_cp = self.get_future_position(other_vehicle, 0.0)
+                eo_cp = o_cp - e_cp 
+                e_hd = self.control_object.heading
+                #if collision_label:
+                if eo_cp[0] * e_hd[0] + eo_cp[1] * e_hd[1] > 0.5 and collision_label:
+                    collision = True
         return collision 
