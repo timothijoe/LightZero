@@ -24,6 +24,8 @@ if __name__ == "__main__":
         random_agent_model=True,
         random_lane_width=True,
         random_lane_num=True,
+        #expert_type = 'straight_agreesive',
+        expert_type = 'straight_wild',
         # map=4,  # seven block
         #map='OSOS',
         # map='SXSX',

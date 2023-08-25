@@ -219,6 +219,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     #episode_max_step = 100,
     
     zt_mcts = True,
+    expert_type = None, # 1, 2, 3
 
     
 

@@ -22,6 +22,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         seq_traj_len = 30,
         show_seq_traj = False,
         enable_u_turn = False,
+        expert_type = None,
         mcts_traj_num = 30,
         ):
         super(NodeNetworkNavigation, self).__init__(engine, show_navi_mark, random_navi_mark_color, show_dest_mark, show_line_to_dest)
@@ -31,6 +32,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         self.u_turn_case = False
         self.should_redraw = False 
         self.mcts_traj_num = mcts_traj_num
+        self.expert_type = expert_type 
         if self._show_traj:
             self._init_trajs()
 

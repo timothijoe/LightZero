@@ -48,6 +48,21 @@ class ExpertIDMPolicy(IDMPolicy):
         self.LANE_CHANGE_FREQ = 5#100
         self.heading_pid = PIDController(1.2, 0.01, 2.5)
         self.lateral_pid = PIDController(0.2, .002, 0.05)
+        self.use_const_ref = False
+        self.need_reset_const_ref = False  
+        self.const_ref = 0
+        if self.control_object.navigation.expert_type == 'straight_agreesive':
+            pass 
+        elif self.control_object.navigation.expert_type == 'straight_wild':
+            self.LANE_CHANGE_FREQ = 5000
+            self.TIME_WANTED = 1.5
+            self.DISTANCE_WANTED = 10.0
+            self.use_const_ref = True
+            self.need_reset_const_ref = True 
+            # current_lanes = self.control_object.navigation.current_ref_lanes
+            # import random
+            # self.label_ref_lane_num = random.randint(0, len(current_lanes))
+            
 
     def act(self, *args, **kwargs):
         # concat lane
@@ -94,6 +109,13 @@ class ExpertIDMPolicy(IDMPolicy):
         current_lanes = self.control_object.navigation.current_ref_lanes
         if self.routing_target_lane is None:
             self.routing_target_lane = self.control_object.lane
+            if self.use_const_ref:
+                if self.need_reset_const_ref is True:
+                    import random 
+                    random_number = random.randint(0, len(current_lanes)-1)
+                    self.const_ref = random_number
+                    self.need_reset_const_ref = False 
+                self.routing_target_lane = current_lanes[self.const_ref]
             return True if self.routing_target_lane in current_lanes else False
         if self.routing_target_lane not in current_lanes:
             for lane in current_lanes:
@@ -106,6 +128,8 @@ class ExpertIDMPolicy(IDMPolicy):
         elif self.control_object.lane in current_lanes and self.routing_target_lane is not self.control_object.lane:
             # lateral routing lane change
             self.routing_target_lane = self.control_object.lane
+            if self.use_const_ref:
+                self.routing_target_lane = current_lanes[self.const_ref]
             self.overtake_timer = self.np_random.randint(0, int(self.LANE_CHANGE_FREQ / 2))
             return True
         else:
@@ -127,6 +151,8 @@ class ExpertIDMPolicy(IDMPolicy):
         self.routing_target_lane = None
         self.available_routing_index_range = None
         self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
+        if self.use_const_ref is True:
+            self.need_reset_const_ref = True 
 
     # def lane_change_policy(self, all_objects):
     #     current_lanes = self.control_object.navigation.current_ref_lanes
