@@ -3,6 +3,7 @@ import logging
 import numpy as np
 from metadrive.component.vehicle_module.PID_controller import PIDController
 from zoo.metadrive.expert_utils.calculate_utils import calculate_fine_collision
+from metadrive.utils.math_utils import not_zero, wrap_to_pi
 
 class ExpertIDMPolicy(IDMPolicy):
     """
@@ -292,6 +293,19 @@ class ExpertIDMPolicy(IDMPolicy):
         else:
             self.NORMAL_SPEED = self.NORMAL_SPEED_CONST
 
+    def steering_control(self, target_lane) -> float:
+        # heading control following a lateral distance control
+        ego_vehicle = self.control_object
+        long, lat = target_lane.local_coordinates(ego_vehicle.position)
+        #lane_heading = target_lane.heading_theta_at(long + 1)
+        lane_heading = target_lane.heading_theta_at(long + 1)
+        v_heading = ego_vehicle.heading_theta
+        steering = self.heading_pid.get_result(wrap_to_pi(lane_heading - v_heading))
+        steering += self.lateral_pid.get_result(-lat) * 0.5
+        #print('zt')
+        return float(steering)
+
+
     def check_in_fan(self, all_objects):
         valid_obj = []
         for other_vehicle in all_objects:
@@ -329,7 +343,7 @@ class ExpertIDMPolicy(IDMPolicy):
 
     def check_single_collision(self, other_vehicle):
         collision = False
-        for t in [1.0, 2,0, 3.0]:
+        for t in [1.0, 2,0, 3.0, 4.0]:
             e_fp = self.get_ego_future_position(t)
             o_fp = self.get_future_position(other_vehicle, t)
             distance = (e_fp[0] - o_fp[0]) ** 2 + (e_fp[1] - o_fp[1]) ** 2
