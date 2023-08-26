@@ -74,8 +74,10 @@ class ExpertIDMPolicy(IDMPolicy):
         elif self.control_object.navigation.expert_type == 'inter_wild':
             self.use_const_ref = True
             self.need_reset_const_ref = True      
-            self.NORMAL_SPEED_CONST = 26          
-            
+            self.NORMAL_SPEED_CONST = 26    
+            self.enable_lane_change = False      
+        elif self.control_object.navigation.expert_type == 'inter_agressive':    
+            self.NORMAL_SPEED_CONST = 30                   
             # current_lanes = self.control_object.navigation.current_ref_lanes
             # import random
             # self.label_ref_lane_num = random.randint(0, len(current_lanes))
@@ -119,6 +121,12 @@ class ExpertIDMPolicy(IDMPolicy):
         acc = self.acceleration(acc_front_obj, acc_front_dist)
         if collision:
             acc = -1.0
+        if steering > 0.5:
+            steering = 0.5
+            print('zt steering > 0.5')
+        if steering < -0.5:
+            steering = -0.5
+            print('zt steering < -0.5')
         return [steering, acc]
 
     def move_to_next_road(self):
@@ -433,5 +441,7 @@ class ExpertIDMPolicy(IDMPolicy):
                         if self.misalign:
                             collision = True
                     if self.control_object.navigation.expert_type == 'inter_wild':
+                        collision = True
+                    if self.control_object.navigation.expert_type == 'inter_agressive':
                         collision = True
         return collision 

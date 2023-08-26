@@ -28,7 +28,8 @@ if __name__ == "__main__":
         #expert_type = 'straight_wild',
         #expert_type = 'round_wild',
         # expert_type = 'round_agressive',
-        expert_type = 'inter_wild',
+        #expert_type = 'inter_wild',
+        expert_type = 'inter_agressive',
         # map=4,  # seven block
         # map='OSOS',
         map='SXSX',
