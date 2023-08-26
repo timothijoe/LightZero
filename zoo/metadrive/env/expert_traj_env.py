@@ -34,117 +34,12 @@ import torch
 from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
 
-vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
-vae_load_dir = '/home/hunter/hoffung/LightZero/' + vae_load_dir 
-_traj_decoder = VaeDecoder(
-            embedding_dim = 64,
-            h_dim = 64,
-            latent_dim = 3,
-            seq_len = 10,
-            dt = 0.1,
-            traj_control_mode = 'acc',
-            one_side_class_vae=False,
-            steer_rate_constrain_value=0.5,
-        )
-_traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
-
-def convert_wp_to_world_coord3d(wp, robot_pos):
-    odom_goal = [0.0, 0.0, 0.0]
-    local_goal = wp
-    delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
-    delta_angle = np.arctan2(local_goal[1], local_goal[0])
-    total_angle = delta_angle + robot_pos[2]
-    odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
-    odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
-    yaw_z = local_goal[2] + robot_pos[2]
-    odom_goal[2] = np.arctan2(np.sin(yaw_z), np.cos(yaw_z))
-    return odom_goal   
-
-def convert_wp_to_world_coord(wp, robot_pos):
-    odom_goal = [0.0, 0.0]
-    local_goal = wp
-    delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
-    delta_angle = np.arctan2(local_goal[1], local_goal[0])
-    total_angle = delta_angle + robot_pos[2]
-    odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
-    odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
-    return odom_goal        
-
-def convert_waypoint_list_coord(wp_list, rbt_pos):
-    # given the robot initial pos, we transfer the traj from origin to initial pos, and rotation
-    wp_w_list = []
-    for wp in wp_list:
-        wp_w = convert_wp_to_world_coord3d(wp, rbt_pos)
-        wp_w_list.append(wp_w)
-    return wp_w_list
-
-def process_node(starting_state, latent_action):
-    child_num = len(latent_action)
-    latent_action = np.array(latent_action)
-    starting_state = starting_state.reshape(1, -1)
-    starting_state = np.repeat(starting_state, child_num, axis = 0)
-    starting_state_taec = copy.deepcopy(starting_state)
-    starting_state_taec[:, :3] = 0
-    latent_action_torch = torch.from_numpy(latent_action).to(torch.float32)
-    starting_state_torch = torch.from_numpy(starting_state_taec).to(torch.float32)
-    with torch.no_grad():
-        traj = _traj_decoder(latent_action_torch, starting_state_torch)
-    traj = traj.numpy()
-    starting_point = starting_state_taec[:,:4]
-    starting_point = np.expand_dims(starting_point, axis = 1)
-    traj = np.concatenate((starting_point, traj), axis=1)
-    convert_traj_list = []
-    
-    for i in range(child_num):
-        single_starting = starting_state[i][:3]
-        single_traj = traj[i]
-        single_traj_3 = single_traj[:,:3]
-        single_traj_v = single_traj[:, 3:4]
-        single_traj_3 = list(single_traj_3)
-        convert_traj_3 = convert_waypoint_list_coord(single_traj_3, single_starting)
-        convert_traj_3 = np.array(convert_traj_3)
-        convert_traj_4 = np.concatenate((convert_traj_3, single_traj_v), axis=1)
-        convert_traj_list.append(convert_traj_4)
-    convert_traj_array = np.array(convert_traj_list)
-    return convert_traj_array 
-
-def traverse_dict(node_dict, starting_state, total_traj = []):
-    node_dict["starting_pose"] = starting_state[:4]
-    print('node id: {}'.format(node_dict["node_id"]))
-    # root node starting state ([x, y, theta, v]) w.r.t current car position
-    children = node_dict["children"]
-    if children is None:
-        return
-    child_latent_actions = []
-    index_fun = {}
-    index = 0
-    for child_dict in children:
-        child_latent_actions.append(child_dict["motivation"])
-        index_fun[index] = child_dict["node_id"]
-    traj_list = process_node(starting_state, child_latent_actions)
-    child_num = traj_list.shape[0]
-    for i in range(child_num):
-        traj_i = traj_list[i]
-        total_traj.append(traj_i)
-        starting_state_i = traj_i[-1]
-        traverse_dict(children[i], starting_state_i, total_traj)
-        
-    # process_parent_node(node_dict)
-    # children = node_dict["children"]
-    # for child_dict in children:
-    #     # 添加新键
-    #     child_dict["new_key"] = "new_value"
-    #     traverse_dict(child_dict)
-    #     # 处理子节点
-    #     process_child_node(child_dict)
-
 
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
     start_seed=0,
     use_render=False,
     environment_num=10,
-
     # ===== Map Config =====
     map='SSSSSSSSSS',  # int or string: an easy way to fill map_config
     # map='SSSSSSS',
@@ -157,7 +52,6 @@ DIDRIVE_DEFAULT_CONFIG = dict(
         BaseMap.LANE_NUM: 3,
         "exit_length": 70,
     },
-
     # ===== Traffic =====
     traffic_density=0.0,
     on_screen=False,
@@ -174,16 +68,13 @@ DIDRIVE_DEFAULT_CONFIG = dict(
         show_lane_line_detector=False,
         show_side_detector=False,
     ),
-
     # ===== Object =====
     accident_prob=0.,  # accident may happen on each block with this probability, except multi-exits block
-
     # ===== Others =====
     use_AI_protector=False,
     save_level=0.5,
     is_multi_agent=False,
     vehicle_config=dict(spawn_lane_index=(FirstPGBlock.NODE_1, FirstPGBlock.NODE_2, 0)),
-
     # ===== Agent =====
     target_vehicle_configs={
         DEFAULT_AGENT: dict(use_special_color=True, spawn_lane_index=(FirstPGBlock.NODE_1, FirstPGBlock.NODE_2, 2))
@@ -199,44 +90,32 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     driving_reward=0.1,
     speed_reward=0.2,
     heading_reward = 0.3, 
-
-
     # ===== Cost Scheme =====
     crash_vehicle_cost=1.0,
     crash_object_cost=1.0,
     out_of_road_cost=1.0,
-
     # ===== Termination Scheme =====
     out_of_route_done=True,
     #physics_world_step_size=1e-1,
     physics_world_step_size=0.1,
-
     # ===== Trajectory length =====
     seq_traj_len = 10,
     show_seq_traj = False,
     debug_info=False,
     enable_u_turn = False,
     #episode_max_step = 100,
-    
     zt_mcts = True,
     expert_type = None, # 1, 2, 3
-
-    
-
-
     #traj_control_mode = 'acc', # another type is 'jerk'
     traj_control_mode = 'jerk',
     # if we choose traj_control_mode = 'acc', then the current state is [0,0,0,v] and the control signal is throttle and steer
     # If not, we will use jerk control, the current state we have vel, acc, current steer, and the control signal is jerk and steer rate (delta_steer)
-    
     # Reward Option Scheme
     const_episode_max_step = False,
     episode_max_step = 150,
     avg_speed = 6.5,
-
     use_lateral=True,
     lateral_scale = 0.25, 
-
     jerk_bias = 15.0, 
     jerk_dominator = 45.0, #50.0
     jerk_importance = 0.6, # 0.6
@@ -252,7 +131,6 @@ DIDRIVE_DEFAULT_CONFIG = dict(
 
 
 class MetaDriveTrajEnv(BaseEnv):
-
     @classmethod
     def default_config(cls) -> "Config":
         #config = super(SimpleMetaDriveEnv, cls).default_config()
@@ -266,36 +144,22 @@ class MetaDriveTrajEnv(BaseEnv):
         merged_config = self._merge_extra_config(config)
         global_config = self._post_process_config(merged_config)
         self.config = global_config
-
-        # if self.config["seq_traj_len"] == 1:
-        #     self.config["episode_max_step"] = self.config["episode_max_step"] * 10
-        # if self.config["seq_traj_len"] == 20:
-        #     self.config["episode_max_step"] = self.config["episode_max_step"] // 2
-
         # agent check
         self.num_agents = self.config["num_agents"]
         self.is_multi_agent = self.config["is_multi_agent"]
         if not self.is_multi_agent:
             assert self.num_agents == 1
         assert isinstance(self.num_agents, int) and (self.num_agents > 0 or self.num_agents == -1)
-
         # observation and action space
         self.agent_manager = MacroAgentManager(
             init_observations=self._get_observations(), init_action_space=self._get_action_space()
         )
         self.action_type = DiscreteMetaAction()
-        
-        
-    
-        
-        #self.action_space = self.action_type.space()
-
         # lazy initialization, create the main vehicle in the lazy_init() func
         self.engine: Optional[MacroBaseEngine] = None
         self._top_down_renderer = None
         self.episode_steps = 0
         # self.current_seed = None
-
         # In MARL envs with respawn mechanism, varying episode lengths might happen.
         self.dones = None
         self.episode_rewards = defaultdict(float)
@@ -303,45 +167,14 @@ class MetaDriveTrajEnv(BaseEnv):
 
         self.start_seed = self.config["start_seed"]
         self.env_num = self.config["environment_num"]
-
         self.time = 0
         self.step_num = 0
         self.episode_rwd = 0
-        # self.vae_decoder = VaeDecoder(
-        #         embedding_dim = 64,
-        #         h_dim = 64,
-        #         latent_dim = 2,
-        #         seq_len = self.config['seq_traj_len'],
-        #         dt = 0.1
-        #     )
-        # # vae_load_dir = 'ckpt_files/a79_decoder_ckpt'
-        # # vae_load_dir = '/home/SENSETIME/zhoutong/hoffnung/xad/ckpt_files/seq_len_20_79_decoder_ckpt'
-        # if self.config['seq_traj_len'] == 10:
-        #     vae_load_dir = 'ckpt_files/seq_len_10_decoder_ckpt'
-        # elif self.config['seq_traj_len'] == 15:
-        #     vae_load_dir = 'ckpt_files/seq_len_15_78_decoder_ckpt'
-        # else:
-        #     assert self.config['seq_traj_len'] == 20
-        #     vae_load_dir = 'ckpt_files/seq_len_20_79_decoder_ckpt'
-        # self.vae_decoder.load_state_dict(torch.load(vae_load_dir))
         self.vel_speed = 0.0
         self.z_state = np.zeros(6)
         self.z_xyt = np.zeros(3)
         self.avg_speed = self.config["avg_speed"]
-        vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
-        vae_load_dir = '/home/hunter/hoffung/LightZero/' + vae_load_dir 
-        self._traj_decoder = VaeDecoder(
-            embedding_dim = 64,
-            h_dim = 64,
-            latent_dim = 3,
-            seq_len = 10,
-            dt = 0.1,
-            traj_control_mode = 'acc',
-            one_side_class_vae=False,
-            steer_rate_constrain_value=0.5,
-        )
-        # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))
-        self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+        self.last_obs = np.zeros((200,200,5))
 
     @property
     def observation_space(self):
@@ -815,8 +648,6 @@ class MetaDriveTrajEnv(BaseEnv):
     def _preprocess_macro_waypoints(self, waypoint_list: Union[np.ndarray, Dict[AnyStr, np.ndarray]]) \
             -> Union[np.ndarray, Dict[AnyStr, np.ndarray]]:
         if not self.is_multi_agent:
-            # print('action.dtype: {}'.format(type(actions)))
-            #print('action: {}'.format(actions))
             actions = waypoint_list
             actions = {v_id: actions for v_id in self.vehicles.keys()}
         return actions
@@ -827,17 +658,7 @@ class MetaDriveTrajEnv(BaseEnv):
         policy_frequency = 1
         frames = int(simulation_frequency / policy_frequency)
         self.time = 0
-        # print('seq len is: ')
-        # print(self.config['seq_traj_len'])
-        #print('di action pairs: {}'.format(actions))
-        #actions = {vid: self.action_type.actions[vvalue] for vid, vvalue in actions.items()}
-        # wp_list = self.get_waypoint_list()
-        # wps = dict()
-        # for vid in actions.keys():
-        #     wps[vid] = wp_list
         wps = actions
-        # if isinstance(actions['default_agent'], dict):
-        #     wps['default_agent'] = actions['default_agent']['raw_traj']
         for frame in range(frames):
             # we use frame to update robot position, and use wps to represent the whole trajectory
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
