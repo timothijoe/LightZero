@@ -262,10 +262,15 @@ class ExpertIDMPolicy(IDMPolicy):
             
             v_heading = self.control_object.heading_theta
             heading_err = np.abs(lane_heading - v_heading)
-            self.misalign = True if heading_err > 0.2 else False
-            self.misalign = False
-            if type(current_lanes[0]).__name__ != type(next_lanes[0]).__name__ :
-
+            if self.control_object.lane.index[1] in ['1O0_0_', '2S0_0_']:
+                self.misalign = True 
+            else:
+                self.misalign = False
+            # self.misalign = True if heading_err > 0.2 else False
+            # self.misalign = False
+            if next_lanes is None:
+                variate_type = False
+            elif type(current_lanes[0]).__name__ != type(next_lanes[0]).__name__ :
                 if zt_lane.length - current_long < 20:
                     variate_type = True
             self.variation_in_line_type = variate_type
