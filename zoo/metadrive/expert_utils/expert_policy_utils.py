@@ -71,6 +71,10 @@ class ExpertIDMPolicy(IDMPolicy):
         elif self.control_object.navigation.expert_type == 'round_agressive':
             self.NORMAL_SPEED_CONST = 30 
             self.variation_in_line_type = False  
+        elif self.control_object.navigation.expert_type == 'inter_wild':
+            self.use_const_ref = True
+            self.need_reset_const_ref = True      
+            self.NORMAL_SPEED_CONST = 26          
             
             # current_lanes = self.control_object.navigation.current_ref_lanes
             # import random
@@ -369,7 +373,7 @@ class ExpertIDMPolicy(IDMPolicy):
         lane_heading = target_lane.heading_theta_at(long + 1)
         v_heading = ego_vehicle.heading_theta
         steering = self.heading_pid.get_result(wrap_to_pi(lane_heading - v_heading)) * 1.5
-        steering += self.lateral_pid.get_result(-lat) * 0.6
+        steering += self.lateral_pid.get_result(-lat) * 1.0 #0.6
         #print('zt')
         return float(steering)
 
@@ -428,4 +432,6 @@ class ExpertIDMPolicy(IDMPolicy):
                                 collision = True
                         if self.misalign:
                             collision = True
+                    if self.control_object.navigation.expert_type == 'inter_wild':
+                        collision = True
         return collision 
