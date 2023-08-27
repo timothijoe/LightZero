@@ -127,6 +127,8 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     use_cross_line_penalty = False,
     use_explicit_vel_obs = False,
     use_explicit_vel_obs_compare = False,
+    save_expert_data = False ,
+    expert_data_folder = None ,
 )
 
 
@@ -174,7 +176,10 @@ class MetaDriveTrajEnv(BaseEnv):
         self.z_state = np.zeros(6)
         self.z_xyt = np.zeros(3)
         self.avg_speed = self.config["avg_speed"]
-        self.last_obs = np.zeros((200,200,5))
+        self.last_obs = None 
+        if self.config["save_expert_data"]:
+            assert self.config["expert_data_folder"] is not None
+            self.single_transition_list = []
 
     @property
     def observation_space(self):
@@ -659,11 +664,36 @@ class MetaDriveTrajEnv(BaseEnv):
         frames = int(simulation_frequency / policy_frequency)
         self.time = 0
         wps = actions
+        ego_vehicle = self.vehicles['default_agent']
+        ego_position = ego_vehicle.position
+        ego_yaw = ego_vehicle.heading_theta 
+        ego_last_position = ego_vehicle.last_position 
+        ego_speed = np.linalg.norm(ego_position - ego_last_position) / self.config['physics_world_step_size']
+        combined_frame_list = []
+        start_state = np.array([ego_position[0], ego_position[1], ego_yaw, ego_speed])
+        combined_frame_list.append(start_state)
+        # print('init pos: {}'.format(ego_position))
+        # print('init last pos: {}'.format(ego_last_position))
+
         for frame in range(frames):
             # we use frame to update robot position, and use wps to represent the whole trajectory
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
             self.engine.step()
             scene_manager_after_step_infos = self.engine.after_step()
+
+            ego_vehicle = self.vehicles['default_agent']
+            ego_position = ego_vehicle.position
+            ego_yaw = ego_vehicle.heading_theta 
+            ego_last_position = ego_vehicle.last_position 
+            ego_speed = np.linalg.norm(ego_position - ego_last_position) / self.config['physics_world_step_size']
+            frame_state = np.array([ego_position[0], ego_position[1], ego_yaw, ego_speed])
+            combined_frame_list.append(frame_state)
+            # print('init frame {} with pos: {}'.format(frame, ego_position))
+            # print('init frame {} with last pos: {}'.format(frame, ego_last_position))
+        combined_frame = np.array(combined_frame_list)
+        single_transition = {'observation': self.last_obs, 'latent_action': None, 'trajectory': combined_frame}
+        if self.config["save_expert_data"]:
+            self.single_transition_list.append(single_transition)
         #scene_manager_after_step_infos = self.engine.after_step()
         return merge_dicts(
             scene_manager_after_step_infos, scene_manager_before_step_infos, allow_new_keys=True, without_copy=True
@@ -681,6 +711,26 @@ class MetaDriveTrajEnv(BaseEnv):
             self.observations[v_id].reset(self, v)
             ret[v_id] = self.observations[v_id].observe(v)
             o = self.observations[v_id].observe(v)
+
+            if self.config["save_expert_data"] and len(self.single_transition_list) > 10:
+                print('success: {}'.format(v.macro_succ))
+                print('traj len: {}'.format(len(self.single_transition_list)))
+                folder_name = self.config["expert_data_folder"]
+                file_num = len(os.listdir(folder_name))
+                new_file_name = "expert_data_%02i.pickle" % file_num
+                new_file_path = os.path.join(folder_name, new_file_name)
+                is_succ = False 
+                if v.macro_succ or v.arrive_destination:
+                    is_succ = True
+                pick_single_transition_list = self.single_transition_list
+                if not is_succ:
+                    pick_single_transition_list = pick_single_transition_list[:-2]
+                traj_dict = {"transition_list": pick_single_transition_list, "episode_rwd": self.episode_rwd, 'is_succ': is_succ}
+                import pickle
+                with open(new_file_path, "wb") as fp:
+                    pickle.dump(traj_dict, fp)
+                self.single_transition_list = []
+
             self.update_current_state(v_id)
             self.vel_speed = 0
             if self.config["traj_control_mode"] == 'jerk':
@@ -726,6 +776,7 @@ class MetaDriveTrajEnv(BaseEnv):
                     o_dict['birdview'][:,:, 5]=0.0
 
             o_reset = o_dict
+            self.last_obs = copy.deepcopy(o_dict)
             if hasattr(v, 'macro_succ'):
                 v.macro_succ = False
             if hasattr(v, 'macro_crash'):
