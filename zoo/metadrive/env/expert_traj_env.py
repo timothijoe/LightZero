@@ -33,7 +33,26 @@ from metadrive.utils.utils import auto_termination
 import torch
 from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
+import math 
 
+def odom_to_local(goal, robot_pos):
+    local_goal = [0, 0, 0, 0]
+    yaw_robot = robot_pos[2]
+    delta_x = goal[0] - robot_pos[0]
+    delta_y = goal[1] - robot_pos[1]
+    delta_yaw = goal[2] - robot_pos[2]
+    local_goal[2] = math.atan2(math.sin(delta_yaw), math.cos(delta_yaw))
+    local_goal[0] = delta_x * math.cos(yaw_robot) + delta_y * math.sin(yaw_robot)
+    local_goal[1] = -delta_x * math.sin(yaw_robot) + delta_y * math.cos(yaw_robot)
+    local_goal[3] = goal[3] if len(goal) == 4 else 0
+    return local_goal
+
+def convert_waypoint_list_local(wp_list, rbt_pos):
+    wp_w_list = []
+    for wp in wp_list:
+        wp_w = odom_to_local(wp, rbt_pos)
+        wp_w_list.append(wp_w)
+    return wp_w_list 
 
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
@@ -555,6 +574,7 @@ class MetaDriveTrajEnv(BaseEnv):
             else:
                 o_dict = o
             obses[v_id] = o_dict
+            self.last_obs = copy.deepcopy(o_dict)
 
             done_function_result, done_infos[v_id] = self.done_function(v_id)
             rewards[v_id], reward_infos[v_id] = self.reward_function(v_id)
@@ -687,11 +707,14 @@ class MetaDriveTrajEnv(BaseEnv):
             ego_last_position = ego_vehicle.last_position 
             ego_speed = np.linalg.norm(ego_position - ego_last_position) / self.config['physics_world_step_size']
             frame_state = np.array([ego_position[0], ego_position[1], ego_yaw, ego_speed])
+            #frame_state = np.array([ego_position[0], ego_position[1], ego_yaw])
             combined_frame_list.append(frame_state)
             # print('init frame {} with pos: {}'.format(frame, ego_position))
             # print('init frame {} with last pos: {}'.format(frame, ego_last_position))
+        combined_frame_list = convert_waypoint_list_local(combined_frame_list, start_state)
         combined_frame = np.array(combined_frame_list)
-        single_transition = {'observation': self.last_obs, 'latent_action': None, 'trajectory': combined_frame}
+        latent_action_zt = np.array([0,0,0])
+        single_transition = {'observation': self.last_obs, 'latent_action': latent_action_zt, 'trajectory': combined_frame}
         if self.config["save_expert_data"]:
             self.single_transition_list.append(single_transition)
         #scene_manager_after_step_infos = self.engine.after_step()
@@ -723,13 +746,14 @@ class MetaDriveTrajEnv(BaseEnv):
                 if v.macro_succ or v.arrive_destination:
                     is_succ = True
                 pick_single_transition_list = self.single_transition_list
+                pick_single_transition_list = pick_single_transition_list[5:]
                 if not is_succ:
                     pick_single_transition_list = pick_single_transition_list[:-2]
                 traj_dict = {"transition_list": pick_single_transition_list, "episode_rwd": self.episode_rwd, 'is_succ': is_succ}
                 import pickle
                 with open(new_file_path, "wb") as fp:
                     pickle.dump(traj_dict, fp)
-                self.single_transition_list = []
+            self.single_transition_list = []
 
             self.update_current_state(v_id)
             self.vel_speed = 0

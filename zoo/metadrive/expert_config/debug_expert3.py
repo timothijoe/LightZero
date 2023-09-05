@@ -33,7 +33,9 @@ if __name__ == "__main__":
         # map='SXSX',
         # enable_u_turn = True,
         # traffic_mode = TrafficMode.Trigger,
-        start_seed=random.randint(0, 1000)
+        start_seed=random.randint(0, 1000),
+        expert_data_folder = '/home/hunter/hoffung/mask_folder',
+        save_expert_data=True,
     )
     parser = argparse.ArgumentParser()
     parser.add_argument("--observation", type=str, default="lidar", choices=["lidar", "rgb_camera"])
