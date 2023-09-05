@@ -109,4 +109,4 @@ if __name__ == "__main__":
     zt_path = None
     #zt_path = '/home/PJLAB/puyuan/hoffung/taecrl_data/lz_ckpt/ckpt_best.pth.tar'
 
-    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=5)
+    eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=20)

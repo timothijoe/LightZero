@@ -1175,7 +1175,7 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_latent_action = torch.clamp(
                     expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
                 )
-                expert_latent_action = torch.arctanh(expert_latent_action)
+                #expert_latent_action = torch.arctanh(expert_latent_action)
                 expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
             roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
             self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
