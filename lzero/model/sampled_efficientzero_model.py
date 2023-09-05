@@ -374,16 +374,21 @@ class SampledEfficientZeroModel(nn.Module):
             )
         self.expert_encoder = SpirlEncoder()
         self.expert_encoder_wild = SpirlEncoder()
+        self.expert_encoder_agressive = SpirlEncoder()
         import os 
         pwd = os.getcwd()
         expert_encoder_ckpt_path = pwd + '/model_path/encoder_60_model'
-        expert_encoder_ckpt_path = pwd + '/model_path/' + local_encoder_ckpt_path
-        expert_encoder_wild_path = pwd + '/model_path/expcc_60_model'
+        # expert_encoder_ckpt_path = pwd + '/model_path/' + local_encoder_ckpt_path
+        # expert_encoder_wild_path = pwd + '/model_path/expcc_60_model'
+        expert_encoder_wild_path = pwd + '/model_path/straight_wild_model'
+        expert_encoder_agressive_path = pwd + '/model_path/straight_agressive_model'
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         checkpoint_wild = torch.load(expert_encoder_wild_path)
+        checkpoint_agressive = torch.load(expert_encoder_agressive_path)
         self.expert_encoder.load_state_dict(checkpoint)
         self.expert_encoder_wild.load_state_dict(checkpoint_wild)
+        self.expert_encoder_agressive.load_state_dict(checkpoint_agressive)
         print('zt')
     
     def get_expert_action(self, obs):
@@ -392,6 +397,10 @@ class SampledEfficientZeroModel(nn.Module):
 
     def get_expert_action_wild(self, obs):
         expert_action = self.expert_encoder_wild(obs)
+        return expert_action 
+
+    def get_expert_action_agressive(self, obs):
+        expert_action = self.expert_encoder_agressive(obs)
         return expert_action 
 
     def initial_inference(self, obs: torch.Tensor) -> EZNetworkOutput:
