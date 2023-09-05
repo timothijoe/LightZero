@@ -110,7 +110,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     show_seq_traj = False,
     debug_info=False,
     enable_u_turn = False,
-    additional_trajs = True,
+    additional_trajs = False,
     #episode_max_step = 100,
     
     zt_mcts = True,

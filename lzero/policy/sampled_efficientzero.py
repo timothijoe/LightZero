@@ -1193,11 +1193,13 @@ class SampledEfficientZeroPolicy(Policy):
                 action, visit_count_distribution_entropy = select_action(
                     distributions, temperature=1, deterministic=True
                 )
-                action = np.array(roots_sampled_actions[i][action])             
+                action = np.array(roots_sampled_actions[i][action])   
+                action = np.array(expert_latent_action[0])          
                 now_action = action  
                 action = {} 
                 action[0] = now_action 
                 action[1] = now_action
+                #now_action = np.array(expert_latent_action[0])
                 optimal_action_list.append(now_action)
                 output[env_id] = {
                     'action': action,
