@@ -560,6 +560,30 @@ namespace tree
         return this->children.size() > 0;
     }
 
+    int CNode::all_children_expaned()
+    {
+        /*
+        Overview:
+            Return whether the current node is expanded.
+        */
+       int all_children_expanded = 1;
+        if (this->expanded())
+        {
+            for (auto a : this->legal_actions)
+            {
+                CNode *child = this->get_child(a);
+                if(child->expanded()){
+                    continue;
+                }
+                else{
+                    all_children_expanded = 0;
+                }
+            }
+            return all_children_expanded;
+        }
+        return 0;
+    }    
+
     float CNode::value()
     {
         /*
@@ -1221,7 +1245,28 @@ namespace tree
                 is_root = 0;
                 parent_q = mean_q;
 
-                CAction action = cselect_child(node, min_max_stats_lst->stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players, continuous_action_space);
+                CAction zaction;
+
+                if(results.search_paths[i].size() == 1 && !node->all_children_expaned()){
+                    // int zt = 0;
+                    //CAction action;
+                    for (auto a : node->legal_actions)
+                    {
+                        CNode *child = node->get_child(a);
+                        if(child->expanded()){
+                            continue;
+                        }
+                        else{
+                            zaction = a;
+                            break;
+                        }
+                    }
+                }
+                else{
+                    zaction = cselect_child(node, min_max_stats_lst->stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players, continuous_action_space);
+                }
+                CAction action = zaction;
+                // CAction action = cselect_child(node, min_max_stats_lst->stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players, continuous_action_space);
                 if (players > 1)
                 {
                     assert(virtual_to_play_batch[i] == 1 || virtual_to_play_batch[i] == 2);

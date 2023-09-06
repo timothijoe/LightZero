@@ -54,6 +54,7 @@ cdef extern from "lib/cnode.h" namespace "tree":
         float compute_mean_q(int isRoot, float parent_q, float discount_factor)
 
         int expanded()
+        int all_children_expaned()
         float value()
         vector[vector[float]] get_trajectory()
         vector[int] get_children_distribution()

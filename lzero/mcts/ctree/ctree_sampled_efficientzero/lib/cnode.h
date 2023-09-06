@@ -62,6 +62,7 @@ namespace tree
         void print_out();
 
         int expanded();
+        int all_children_expaned();
 
         float value();
 
