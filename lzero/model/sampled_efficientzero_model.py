@@ -374,6 +374,8 @@ class SampledEfficientZeroModel(nn.Module):
         expert_encoder_ckpt_path = '/home/hunter/obelisk/expert_LightZero/result/metadrive_train_expert_straight_aggresive/ckpt/20_ckpt'
         #expert_encoder_ckpt_path = '/home/hunter/obelisk/expert_LightZero/result/metadrive_train_expert_straight_wild/ckpt/80_ckpt'
         expert_encoder_ckpt_path = '/home/hunter/obelisk/ss/straight_wild_ckpt'
+        expert_encoder_ckpt_path = '/home/hunter/obelisk/visual_LightZero/model_path/round_70_model'
+        #expert_encoder_ckpt_path = '/home/hunter/obelisk/visual_LightZero/model_path/inter_80_model'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         self.expert_encoder.load_state_dict(checkpoint)
         print('zt')
