@@ -24,7 +24,7 @@ reanalyze_ratio = 0.0
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_icra_ctree/t1aec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
+    f'data_icra_ctree/2aec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
     env=dict(
         env_name='taec_mcts',
         continuous=True,
@@ -70,7 +70,7 @@ pendulum_sampled_efficientzero_config = dict(
         cuda=True,
         use_expert=True,
         use_bayesian = True, 
-        bayesian_alpha = 0.1,
+        bayesian_alpha = 4.0,
         env_type='not_board_games',
         threshold_training_steps_for_final_temperature = 20000,
         threshold_training_steps_for_final_lr = 20000,

@@ -68,6 +68,7 @@ pendulum_sampled_efficientzero_config = dict(
             image_channel=5,
         ),
         cuda=True,
+        bayesian_alpha = 3.0,
         use_expert=True,
         env_type='not_board_games',
         threshold_training_steps_for_final_temperature = 20000,

@@ -341,7 +341,7 @@ namespace tree
             float logProb = calculateLogProb(gmm, sampledAction);
             float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
             float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
-            logProb = logProb + 0.1 * (glogProb1 + glogProb2);
+            logProb = logProb + 0.1 * std::max(glogProb1, glogProb2);
             float y_sum = std::accumulate(y.begin(), y.end(), 0.);
             sampled_actions_log_probs_after_tanh.push_back(logProb - log(y_sum));
             sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
@@ -364,7 +364,7 @@ namespace tree
             float logProb = calculateLogProb(gmm, sampledAction);
             float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
             float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
-            logProb = logProb + 0.1 * (glogProb1 + glogProb2);
+            logProb = logProb + 0.1 * std::max(glogProb1, glogProb2);
             float y_sum = std::accumulate(y.begin(), y.end(), 0.);
             sampled_actions_log_probs_after_tanh.push_back(logProb - log(y_sum));
             sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
