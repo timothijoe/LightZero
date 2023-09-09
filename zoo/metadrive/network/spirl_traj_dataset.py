@@ -43,5 +43,7 @@ class SPIRLDataset(Dataset):
     def __getitem__(self, index: int) -> Any:
         #return self.extract_data[str(index)]['state'], self.extract_data[str(index)]['action']
         #return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['latent_action']
-        return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['trajectory'][0], self.extract_data[str(index)]['trajectory'][:,:2] 
+        zt = np.array([0,0,0, 0.3])
+        return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['trajectory'][0] + zt, self.extract_data[str(index)]['trajectory'][:,:2]
+        #return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['trajectory'][0], self.extract_data[str(index)]['trajectory'][:,:2]  
         #return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['observation']['vehicle_state'], self.extract_data[str(index)]['trajectory'][1:] 

@@ -24,18 +24,18 @@ if __name__ == "__main__":
         random_agent_model=True,
         random_lane_width=True,
         random_lane_num=True,
-        expert_type = 'straight_agreesive',
+        #expert_type = 'straight_agreesive',
         #expert_type = 'straight_wild',
-        #expert_type = 'round_wild',
+        expert_type = 'round_wild',
         #expert_type = 'round_agressive',
         # map=4,  # seven block
-        #map='OSOS',
+        map='OSOS',
         # map='SXSX',
         # enable_u_turn = True,
         # traffic_mode = TrafficMode.Trigger,
         start_seed=random.randint(0, 1000),
         #expert_data_folder = '/home/hunter/hoffung/expert_data_collection/straight_aggresive',
-        expert_data_folder = '/home/hunter/hoffung/expert_data_collection/inter_wild',
+        expert_data_folder = '/home/hunter/hoffung/expert_data_collection/round_wild',
         save_expert_data=True,
     )
     parser = argparse.ArgumentParser()

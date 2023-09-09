@@ -14,11 +14,13 @@ from zoo.metadrive.utils.traj_decoder import VaeDecoder
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/expcc_straight'
-expert_dir = '/home/hunter/hoffung/mask_folder/'
+expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_aggresive/'
+expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_wild/'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/round'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/inter'
 metadrive_basic_config = dict(
-    exp_name = 'metadrive_train_expert_testjuly2',
+    #exp_name = 'metadrive_train_expert_straight_aggresive',
+    exp_name = 'metadrive_train_expert_straight_wild',
     policy=dict(
         cuda=True,
         model=dict(
