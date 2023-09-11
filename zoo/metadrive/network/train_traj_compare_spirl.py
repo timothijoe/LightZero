@@ -10,6 +10,7 @@ from spirl_model import SpirlEncoder
 from spirl_traj_dataset import SPIRLDataset
 from utils import mk_logdir, loss_function
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
+from zoo.metadrive.utils.control_decoder import CCDecoder
 
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
@@ -18,16 +19,17 @@ expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_aggresive/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_agressive/'
+expert_dir = '/home/hunter/hoffung/expert_data_collection/compare_straight_aggresive/'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/round'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/inter'
 metadrive_basic_config = dict(
     #exp_name = 'metadrive_train_expert_straight_aggresive',
-    exp_name = 'metadrive_train_expert_inter_agressive',
+    exp_name = 'metadrive_train_expert_compare_straight_aggressive',
     policy=dict(
         cuda=True,
         model=dict(
             obs_shape=[5, 200, 200],
-            action_shape=3,
+            action_shape=2,
             encoder_hidden_size_list=[128, 128, 64],
         ),
         learn=dict(
@@ -41,20 +43,27 @@ metadrive_basic_config = dict(
 )
 main_config = EasyDict(metadrive_basic_config)
 
-zt_traj_decoder = VaeDecoder(
-    embedding_dim = 64,
-    h_dim = 64,
-    latent_dim = 3,
-    seq_len = 10,
+# zt_traj_decoder = VaeDecoder(
+#     embedding_dim = 64,
+#     h_dim = 64,
+#     latent_dim = 3,
+#     seq_len = 10,
+#     dt = 0.1,
+#     traj_control_mode = 'acc',
+#     one_side_class_vae=False,
+#     steer_rate_constrain_value=0.5,
+# )
+# vae_load_dir = '/home/hunter/hoffung/LightZero/zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+# zt_traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+
+zt_traj_decoder = CCDecoder(
+    control_num = 2,
+    seq_len = 1,
+    use_relative_pos = True,
     dt = 0.1,
     traj_control_mode = 'acc',
-    one_side_class_vae=False,
-    steer_rate_constrain_value=0.5,
+    steer_rate_constrain_value = 0.5,
 )
-vae_load_dir = '/home/hunter/hoffung/LightZero/zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
-zt_traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
-
-
 
 def main(cfg):
     mk_logdir(cfg.exp_name)
