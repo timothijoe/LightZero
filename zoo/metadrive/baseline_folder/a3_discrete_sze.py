@@ -4,11 +4,11 @@ from easydict import EasyDict
 # begin of the most frequently changed config specified by the user
 # ==============================================================
 continuous_action_space = False
-K = 10  # num_of_sampled_actions
-collector_env_num = 16
-n_episode = 16
-evaluator_env_num = 16
-num_simulations = 50
+K = 20  # num_of_sampled_actions
+collector_env_num = 14
+n_episode = 14
+evaluator_env_num = 14
+num_simulations = 100
 update_per_collect = 200
 batch_size = 64
 max_env_step = int(1e7)
@@ -19,7 +19,7 @@ reanalyze_ratio = 0.
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_sez_ctree/pendulum_sampled_efficientzero_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
+    f'data_icra_sep9_ctree/compare3_discrete_sez_{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
@@ -41,7 +41,7 @@ pendulum_sampled_efficientzero_config = dict(
             use_heading_reward = True,
             use_jerk_reward = True,
             heading_reward=0.15,
-            speed_reward = 0.05,
+            speed_reward = 0.00,
             driving_reward = 0.2,
             ignore_first_steer = False,
             crash_vehicle_penalty = 4.0,
@@ -62,6 +62,8 @@ pendulum_sampled_efficientzero_config = dict(
         ),
         cuda=True,
         env_type='not_board_games',
+        threshold_training_steps_for_final_temperature = 20000,
+        threshold_training_steps_for_final_lr = 20000,
         game_segment_length=50,
         update_per_collect=update_per_collect,
         batch_size=batch_size,
@@ -78,8 +80,8 @@ pendulum_sampled_efficientzero_config = dict(
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
         discount_factor=0.99,
-        td_steps = 20,
-        num_unroll_steps = 20,
+        td_steps = 2,
+        num_unroll_steps = 2,
         normalize_prob_of_sampled_actions = True,
         learn=dict(
             learner=dict(

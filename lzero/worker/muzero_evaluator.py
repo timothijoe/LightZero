@@ -435,6 +435,7 @@ class MuZeroEvaluator(ISerialEvaluator):
             'reward_min': np.min(episode_return),
             # 'each_reward': episode_return,
             'complete_ratio': np.mean(complete_ratio_list),
+            'complete_ratio_std': np.std(complete_ratio_list),
             'succ_rate': success_ratio,
             'crash_vehicle_ratio': crash_vehicle_ratio,
             'out_of_road_ratio': out_of_road_ratio,

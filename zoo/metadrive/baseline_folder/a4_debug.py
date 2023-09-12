@@ -1,6 +1,7 @@
 from easydict import EasyDict
+
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 # ==============================================================
 # begin of the most frequently changed config specified by the user
 # ==============================================================
@@ -9,7 +10,7 @@ K = 10  # num_of_sampled_actions
 collector_env_num = 14
 n_episode = 14
 evaluator_env_num = 14
-num_simulations = 100
+num_simulations = 50
 update_per_collect = 200
 batch_size = 64
 max_env_step = int(1e7)
@@ -20,7 +21,7 @@ reanalyze_ratio = 0.
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_icra_sep9_ctree/compare2_discrete_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
+    f'data_mz_ctree/pure2_action_discrete_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
@@ -48,7 +49,6 @@ pendulum_sampled_efficientzero_config = dict(
             crash_vehicle_penalty = 4.0,
             out_of_road_penalty = 5.0,
             is_continuous = False,
-            jerk_importance=0.1,
         ),
     ),
     policy=dict(
@@ -63,8 +63,6 @@ pendulum_sampled_efficientzero_config = dict(
         cuda=True,
         env_type='not_board_games',
         game_segment_length=50,
-        threshold_training_steps_for_final_temperature = 20000,
-        threshold_training_steps_for_final_lr = 20000,
         update_per_collect=update_per_collect,
         batch_size=batch_size,
         optim_type='Adam',
@@ -75,13 +73,13 @@ pendulum_sampled_efficientzero_config = dict(
         num_simulations=num_simulations,
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
-        eval_freq=int(1e3),
+        eval_freq=int(2e3),
         replay_buffer_size=int(3e4),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
         discount_factor=0.99,
-        td_steps = 2,
-        num_unroll_steps = 2,
+        td_steps = 10,
+        num_unroll_steps = 10,
         normalize_prob_of_sampled_actions = True,
         learn=dict(
             learner=dict(

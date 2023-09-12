@@ -374,6 +374,15 @@ class SampledEfficientZeroModel(nn.Module):
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         self.expert_encoder.load_state_dict(checkpoint)
+
+        # test_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_zt4_discrete_sez/ckpt/represent_18_ckpt'
+        # checkpoint_test = torch.load(test_ckpt_path)
+        # test_ckpt_path2 = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_zt4_discrete_sez/ckpt/pred_18_ckpt'
+        # checkpoint_test2 = torch.load(test_ckpt_path2)
+        # self.representation_network.load_state_dict(checkpoint_test)
+        # self.prediction_network.load_state_dict(checkpoint_test2)
+
+
         print('zt')
     
     def get_expert_action(self, obs):

@@ -172,6 +172,13 @@ class MuZeroModel(nn.Module):
             norm_type=norm_type
         )
 
+        # test_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_zt3_discrete/ckpt/represent_0_ckpt'
+        # checkpoint_test = torch.load(test_ckpt_path)
+        # test_ckpt_path2 = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_zt3_discrete/ckpt/pred_0_ckpt'
+        # checkpoint_test2 = torch.load(test_ckpt_path2)
+        # self.representation_network.load_state_dict(checkpoint_test)
+        # self.prediction_network.load_state_dict(checkpoint_test2)
+
         if self.self_supervised_learning_loss:
             # projection used in EfficientZero
             if self.downsample:

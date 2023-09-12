@@ -265,7 +265,7 @@ class MetaDriveTrajEnv(BaseEnv):
             throttle_select = actions // single_zt_dim
             steer = steer_candidates[steer_select]
             throttle = throttle_candidates[throttle_select]
-            actions = np.array([steer, throttle])
+            actions = np.array([throttle,steer])
         self.episode_steps += 1
         if self.config["zt_mcts"]:
             init_state = copy.deepcopy(self.z_state)
@@ -493,10 +493,15 @@ class MetaDriveTrajEnv(BaseEnv):
             print('total reward: {}'.format(reward))
         # print('speed: {}'.format(speed))
         step_info["step_reward"] = reward
+        append_rwd = 0.04 * (self.episode_max_step - self.step_num)
+        if append_rwd < 0:
+            append_rwd = 0
         if vehicle.arrive_destination:
             reward = +self.config["success_reward"]
+            reward += append_rwd
         elif vehicle.macro_succ:
             reward = +self.config["success_reward"]
+            reward += append_rwd
         elif self._is_out_of_road(vehicle):
             reward = -self.config["out_of_road_penalty"]
         elif vehicle.crash_vehicle:
@@ -804,6 +809,7 @@ class MetaDriveTrajEnv(BaseEnv):
                 # v_state[3] = v.last_spd
                 # v_state = self.z_state
                 v_state = np.zeros(6)
+                self.z_state[3] = 3.0
                 # v_state[3] = 5.0
                 o_dict['vehicle_state'] = v_state
                 #o_dict['speed'] = v.last_spd
