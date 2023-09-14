@@ -19,7 +19,7 @@ reanalyze_ratio = 0.
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_icra_sep9_ctree/compare3_discrete_sez_{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
+    f'data_icra_sep9_ctree/compare3_2_discrete_sez_{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
@@ -47,6 +47,7 @@ pendulum_sampled_efficientzero_config = dict(
             crash_vehicle_penalty = 4.0,
             out_of_road_penalty = 5.0,
             is_continuous = False,
+            jerk_importance=0.1,
         ),
     ),
     policy=dict(
@@ -68,14 +69,15 @@ pendulum_sampled_efficientzero_config = dict(
         update_per_collect=update_per_collect,
         batch_size=batch_size,
         optim_type='Adam',
-        lr_piecewise_constant_decay=False,
+        lr_piecewise_constant_decay=True,
+        manual_temperature_decay=True,
         learning_rate=0.0003,
         # NOTE: for continuous gaussian policy, we use the policy_entropy_loss as in the original Sampled MuZero paper.
         policy_entropy_loss_weight=5e-3,
         num_simulations=num_simulations,
         reanalyze_ratio=reanalyze_ratio,
         n_episode=n_episode,
-        eval_freq=int(2e3),
+        eval_freq=int(1e3),
         replay_buffer_size=int(3e4),  # the size/capacity of replay_buffer, in the terms of transitions.
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,

@@ -357,6 +357,15 @@ class SampledEfficientZeroPolicy(Policy):
         value_priority = L1Loss(reduction='none')(original_value.squeeze(-1), target_value[:, 0])
         value_priority = value_priority.data.cpu().numpy() + 1e-6
 
+        with torch.no_grad():
+            expert_frame = encoder_image_list[0]
+            expert_latent_action = self._learn_model.get_expert_action(expert_frame)
+            device = expert_latent_action.device
+            expert_latent_action = torch.clamp(
+                expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+            )
+            expert_latent_action = torch.arctanh(expert_latent_action)
+
         # ==============================================================
         # calculate policy and value loss for the first step.
         # ==============================================================
@@ -372,6 +381,7 @@ class SampledEfficientZeroPolicy(Policy):
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions, mu, sigma = self._calculate_policy_loss_cont(
                 policy_loss, policy_logits, target_policy, mask_batch, child_sampled_actions_batch, unroll_step=0
             )
+            expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
         else:
             """discrete action space"""
             policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -445,6 +455,17 @@ class SampledEfficientZeroPolicy(Policy):
                     child_sampled_actions_batch,
                     unroll_step=step_i + 1
                 )
+                with torch.no_grad():
+                    expert_frame = encoder_image_list[step_i+1]
+                    expert_latent_action = self._learn_model.get_expert_action(expert_frame)
+                    device = expert_latent_action.device
+                    expert_latent_action = torch.clamp(
+                        expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                    )
+                    expert_latent_action = torch.arctanh(expert_latent_action)
+                expert_loss += torch.nn.functional.mse_loss(mu, expert_latent_action)
+
+
             else:
                 """discrete action space"""
                 policy_loss, policy_entropy, policy_entropy_loss, target_policy_entropy, target_sampled_actions = self._calculate_policy_loss_disc(
@@ -487,6 +508,11 @@ class SampledEfficientZeroPolicy(Policy):
             self._cfg.policy_entropy_loss_weight * policy_entropy_loss
         )
         weighted_total_loss = (weights * loss).mean()
+
+        # if self._cfg.use_expert:
+        #     weighted_total_loss += expert_loss.mean() * 5 * 10
+        weighted_total_loss += expert_loss.mean() * 5 * 10
+
         weighted_total_loss.register_hook(lambda grad: grad * gradient_scale)
         self._optimizer.zero_grad()
         weighted_total_loss.backward()

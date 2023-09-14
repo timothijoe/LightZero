@@ -1,5 +1,6 @@
 from easydict import EasyDict
-
+import os 
+os.environ['CUDA_VISIBLE_DEVICES'] = "1"
 # ==============================================================
 # begin of the most frequently changed config specified by the user
 # ==============================================================
@@ -9,10 +10,10 @@ SEQ_TRAJ_LEN = 1
 
 continuous_action_space = True
 K = 10  # num_of_sampled_actions
-collector_env_num = 16
-n_episode = 16
-evaluator_env_num = 16
-num_simulations = 50
+collector_env_num = 14
+n_episode = 14
+evaluator_env_num = 14
+num_simulations = 100
 update_per_collect = 200
 batch_size = 64 #256
 max_env_step = int(1e7)
@@ -23,7 +24,7 @@ reanalyze_ratio = 0.0
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_sez_ctree/t2aec_mcts_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
+    f'data_icra_sep9_ctree/compare1_kl_regularized_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
     env=dict(
         env_name='taec_mcts',
         continuous=True,
@@ -50,6 +51,7 @@ pendulum_sampled_efficientzero_config = dict(
             ignore_first_steer = False,
             crash_vehicle_penalty = 4.0,
             out_of_road_penalty = 5.0,
+            #jerk_importance=0.1,
         ),
     ),
     policy=dict(
@@ -67,12 +69,15 @@ pendulum_sampled_efficientzero_config = dict(
         ),
         cuda=True,
         use_expert=False,
+        threshold_training_steps_for_final_temperature = 20000,
+        threshold_training_steps_for_final_lr = 20000,
         env_type='not_board_games',
         game_segment_length=50,
         update_per_collect=update_per_collect,
         batch_size=batch_size,
         optim_type='Adam',
-        lr_piecewise_constant_decay=False,
+        lr_piecewise_constant_decay=True,
+        manual_temperature_decay=True,
         learning_rate=0.0003,
         # NOTE: for continuous gaussian policy, we use the policy_entropy_loss as in the original Sampled MuZero paper.
         policy_entropy_loss_weight=5e-3,
@@ -84,8 +89,8 @@ pendulum_sampled_efficientzero_config = dict(
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
         discount_factor=0.99,
-        td_steps = 20,
-        num_unroll_steps = 20,
+        td_steps = 2,
+        num_unroll_steps = 2,
         normalize_prob_of_sampled_actions = True,
         learn=dict(
             learner=dict(

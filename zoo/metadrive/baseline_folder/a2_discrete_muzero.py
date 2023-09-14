@@ -20,7 +20,7 @@ reanalyze_ratio = 0.
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_icra_sep9_ctree/compare2_discrete_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
+    f'data_icra_sep9_ctree/compare2_2_discrete_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_seed0',
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
@@ -68,7 +68,8 @@ pendulum_sampled_efficientzero_config = dict(
         update_per_collect=update_per_collect,
         batch_size=batch_size,
         optim_type='Adam',
-        lr_piecewise_constant_decay=False,
+        lr_piecewise_constant_decay=True,
+        manual_temperature_decay=True,
         learning_rate=0.0003,
         # NOTE: for continuous gaussian policy, we use the policy_entropy_loss as in the original Sampled MuZero paper.
         policy_entropy_loss_weight=5e-3,

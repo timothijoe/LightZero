@@ -6,10 +6,10 @@ from easydict import EasyDict
 continuous_action_space = True
 K = 10  # num_of_sampled_actions
 collector_env_num = 1
-n_episode = 8
+n_episode = 2
 evaluator_env_num = 1
 num_simulations = 25
-update_per_collect = 200
+update_per_collect = 2
 batch_size = 16
 max_env_step = int(1e6)
 reanalyze_ratio = 0.
