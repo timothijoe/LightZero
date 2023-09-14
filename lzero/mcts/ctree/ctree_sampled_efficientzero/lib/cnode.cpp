@@ -297,7 +297,15 @@ namespace tree
                     // std::normal_distribution<float> distribution(mu[j], sigma[j]);
                     // sampled_action_one_dim_before_tanh = distribution(generator);
                     // refer to python normal log_prob method
+                    std::random_device rd;  // 随机数种子
+                    std::mt19937 gen(rd()); // 随机数生成器
+                    float zt_sigma = 0.3;
+                    std::normal_distribution<double> normal_distribution(expert_latent_action[j], zt_sigma);
+                    float zt_sample =  normal_distribution(gen);
                     sampled_action_one_dim_before_tanh = expert_latent_action[j];
+                    if(i > 0){
+                        sampled_action_one_dim_before_tanh = zt_sample;
+                    }
                     float expert_sigma = 0.8;
                     float expert_bias = exp(-pow((sampled_action_one_dim_before_tanh - expert_latent_action[j]), 2) / (2 * pow(expert_sigma, 2)) - log(expert_sigma) - log(sqrt(2 * M_PI)));
                     sampled_action_prob_before_tanh *= (exp(-pow((sampled_action_one_dim_before_tanh - mu[j]), 2) / (2 * pow(sigma[j], 2)) - log(sigma[j]) - log(sqrt(2 * M_PI)))+expert_bias);
