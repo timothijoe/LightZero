@@ -373,8 +373,8 @@ class SampledEfficientZeroModel(nn.Module):
         expert_encoder_ckpt_path = pwd + '/model_path/' + local_encoder_ckpt_path
         expert_encoder_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/sep13_continous_data/ckpt/28_ckpt'
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
-        checkpoint = torch.load(expert_encoder_ckpt_path)
-        self.expert_encoder.load_state_dict(checkpoint)
+        #checkpoint = torch.load(expert_encoder_ckpt_path)
+        #self.expert_encoder.load_state_dict(checkpoint)
 
         # test_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_zt4_discrete_sez/ckpt/represent_18_ckpt'
         # checkpoint_test = torch.load(test_ckpt_path)

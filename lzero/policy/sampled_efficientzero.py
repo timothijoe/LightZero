@@ -511,7 +511,7 @@ class SampledEfficientZeroPolicy(Policy):
 
         # if self._cfg.use_expert:
         #     weighted_total_loss += expert_loss.mean() * 5 * 10
-        weighted_total_loss += expert_loss.mean() * 5 * 10
+        weighted_total_loss += expert_loss.mean() * 2
 
         weighted_total_loss.register_hook(lambda grad: grad * gradient_scale)
         self._optimizer.zero_grad()
