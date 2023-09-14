@@ -1,6 +1,6 @@
 from easydict import EasyDict
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ['CUDA_VISIBLE_DEVICES'] = "0"
 # ==============================================================
 # begin of the most frequently changed config specified by the user
 # ==============================================================
@@ -24,7 +24,7 @@ reanalyze_ratio = 0.0
 
 pendulum_sampled_efficientzero_config = dict(
     exp_name=
-    f'data_icra_sep9_ctree/sep14_compare1_ei_regularized_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
+    f'data_icra_sep9_ctree/sep14_compare1_v2_highweight_ei_regularized_k{K}_ns{num_simulations}_upc{update_per_collect}_rr{reanalyze_ratio}_expert_seed0',
     env=dict(
         env_name='taec_mcts',
         continuous=True,

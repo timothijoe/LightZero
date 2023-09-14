@@ -80,7 +80,7 @@ namespace tree
         std::vector<CNode> roots;
         std::vector<std::vector<float> > legal_actions_list;
         bool continuous_action_space;
-        int expert_sample_num = 1;
+        int expert_sample_num = 4;
 
         CRoots();
         CRoots(int root_num, std::vector<std::vector<float> > legal_actions_list, int action_space_size, int num_of_sampled_actions, bool continuous_action_space);

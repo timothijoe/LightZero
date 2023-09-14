@@ -511,7 +511,7 @@ class SampledEfficientZeroPolicy(Policy):
 
         # if self._cfg.use_expert:
         #     weighted_total_loss += expert_loss.mean() * 5 * 10
-        weighted_total_loss += expert_loss.mean() * 5 * 10
+        weighted_total_loss += expert_loss.mean() * 2
 
         weighted_total_loss.register_hook(lambda grad: grad * gradient_scale)
         self._optimizer.zero_grad()
@@ -902,11 +902,22 @@ class SampledEfficientZeroPolicy(Policy):
                                     ).astype(np.float32).tolist() for j in range(active_collect_env_num)
             ]
 
+            with torch.no_grad():
+                expert_frame = data
+                expert_latent_action = self._collect_model.get_expert_action(expert_frame)
+                device = expert_latent_action.device
+                expert_latent_action = torch.clamp(
+                    expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
+                expert_latent_action = torch.arctanh(expert_latent_action)
+                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
 
-            if self._cfg.use_expert:
-                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
-            else:
-                roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
+
+            roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
+            # if self._cfg.use_expert:
+            #     roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
+            # else:
+            #     roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play)
             self._mcts_collect.search(
                 roots, self._collect_model, latent_state_roots, reward_hidden_state_roots, to_play
             )
@@ -1034,15 +1045,26 @@ class SampledEfficientZeroPolicy(Policy):
                     self._cfg.model.num_of_sampled_actions, self._cfg.model.continuous_action_space
                 )
 
+            with torch.no_grad():
+                expert_frame = data
+                expert_latent_action = self._collect_model.get_expert_action(expert_frame)
+                device = expert_latent_action.device
+                expert_latent_action = torch.clamp(
+                    expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
+                expert_latent_action = torch.arctanh(expert_latent_action)
+                expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()
 
+
+            roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play, expert_latent_action)
 
 
             #roots.prepare(self._cfg.root_noise_weight, noises, value_prefix_roots, policy_logits, to_play, expert_latent_action)
             #roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
-            if self._cfg.use_expert:
-                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
-            else:
-                roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
+            # if self._cfg.use_expert:
+            #     roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
+            # else:
+            #     roots.prepare_no_noise(value_prefix_roots, policy_logits, to_play)
             self._mcts_eval.search(roots, self._eval_model, latent_state_roots, reward_hidden_state_roots, to_play)
 
             roots_visit_count_distributions = roots.get_distributions(
