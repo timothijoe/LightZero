@@ -1091,6 +1091,7 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_frame = data
                 expert_latent_action = self._collect_model.get_expert_action(expert_frame)
                 expert_latent_action_wild = self._collect_model.get_expert_action_wild(expert_frame)
+                expert_latent_action_agressive = self._collect_model.get_expert_action_agressive(expert_frame)
                 device = expert_latent_action.device
                 expert_latent_action = torch.clamp(
                     expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
@@ -1098,9 +1099,14 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_latent_action_wild = torch.clamp(
                     expert_latent_action_wild, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
                 )
+                expert_latent_action_agressive = torch.clamp(
+                    expert_latent_action_agressive, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
+                )
                 expert_latent_action = torch.arctanh(expert_latent_action)       
                 expert_latent_action_wild = torch.arctanh(expert_latent_action_wild)
-                final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+                expert_latent_action_agressive = torch.arctanh(expert_latent_action_agressive)
+                #final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
+                final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild, expert_latent_action_agressive), dim=1)
                 final_expert_list = final_expert_action.detach().cpu().numpy().tolist() 
 
 

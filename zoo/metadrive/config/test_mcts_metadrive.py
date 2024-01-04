@@ -52,6 +52,7 @@ pendulum_sampled_efficientzero_config = dict(
             image_channel=5,
         ),
         cuda=True,
+        mcts_ctree = False,
         use_expert = True,
         env_type='not_board_games',
         game_segment_length=50,
@@ -109,7 +110,8 @@ if __name__ == "__main__":
         from lzero.entry.eval_metadrive import eval_metadrive
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
     zt_path = None
-    zt_path = '/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar'
-    zt_path = '/home/hunter/obelisk/data_ckpt/f_server/ckpt_best.pth.tar'
+    # zt_path = '/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar'
+    # zt_path = '/home/hunter/obelisk/data_ckpt/f_server/ckpt_best.pth.tar'
+    zt_path = '/home/rpai_lab_server_1/nov_dec/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
 
     eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=50)

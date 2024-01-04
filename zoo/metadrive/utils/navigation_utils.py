@@ -24,7 +24,8 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         enable_u_turn = False,
         mcts_traj_num = 30,
         ):
-        super(NodeNetworkNavigation, self).__init__(engine, show_navi_mark, random_navi_mark_color, show_dest_mark, show_line_to_dest)
+        #super(NodeNetworkNavigation, self).__init__(engine, show_navi_mark, random_navi_mark_color, show_dest_mark, show_line_to_dest)
+        super(NodeNetworkNavigation, self).__init__(engine, False, random_navi_mark_color, show_dest_mark, show_line_to_dest)
         self._show_traj = show_seq_traj
         self.seq_traj_len = seq_traj_len 
         self.enable_u_turn = enable_u_turn 
@@ -36,7 +37,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
 
         #self.drawd = False
         
-        self.LINE_TO_DEST_HEIGHT += 4
+        self.LINE_TO_DEST_HEIGHT += 0.4 #4
         self.activate_car_pos_marker = False
 
     def _init_trajs(self):
