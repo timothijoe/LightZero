@@ -8,7 +8,7 @@ K = 8  # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
-num_simulations = 50
+num_simulations = 80
 update_per_collect = 2
 batch_size = 8
 max_env_step = int(1e6)
@@ -31,7 +31,7 @@ pendulum_sampled_efficientzero_config = dict(
         manager=dict(shared_memory=False, ),
         metadrive=dict(
             use_render=True,
-            traffic_density=0.30,  # Density of vehicles occupying the roads, range in [0,1]
+            traffic_density=0.25,  # Density of vehicles occupying the roads, range in [0,1]
             show_seq_traj = True,
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
@@ -43,6 +43,7 @@ pendulum_sampled_efficientzero_config = dict(
             #show_skybox=False,
             show_fps=False,
             show_navi_mark=False,
+            camera_height=4.8,
             #show_terrain=False,
         ),
     ),

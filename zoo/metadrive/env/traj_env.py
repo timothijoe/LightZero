@@ -202,6 +202,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     out_of_route_done=True,
     #physics_world_step_size=1e-1,
     physics_world_step_size=0.1,
+    decision_repeat = 1,
 
     # ===== Trajectory length =====
     seq_traj_len = 10,
@@ -924,7 +925,7 @@ class MetaDriveTrajEnv(BaseEnv):
         for frame in range(frames):
             # we use frame to update robot position, and use wps to represent the whole trajectory
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
-            self.engine.step()
+            self.engine.step(self.config["decision_repeat"])
             scene_manager_after_step_infos = self.engine.after_step()
         #scene_manager_after_step_infos = self.engine.after_step()
         return merge_dicts(

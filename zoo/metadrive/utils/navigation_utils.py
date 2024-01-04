@@ -39,6 +39,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
         
         self.LINE_TO_DEST_HEIGHT += 0.4 #4
         self.activate_car_pos_marker = False
+        self.use_translation = False 
 
     def _init_trajs(self):
         for i in range(self.seq_traj_len):
@@ -71,6 +72,8 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
 
     def convert_wp_to_world_coord(self, index, rbt_pos, rbt_heading, wp):
+        if self.use_translation:
+            wp[0] = wp[0] + 1.5
         theta = np.arctan2(wp[1], wp[0])
         rbt_heading = np.arctan2(rbt_heading[1], rbt_heading[0])
         theta = wrap_to_pi(rbt_heading) + wrap_to_pi(theta)
@@ -148,7 +151,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
                     lines.setColor(0.3, 0.3, 0.5, 0.7)
                     lines.moveTo(panda_position((mcts_traj_list[i][j][0], mcts_traj_list[i][j][1]), self.LINE_TO_DEST_HEIGHT - 0.3))
                     lines.drawTo(panda_position((mcts_traj_list[i][j+1][0], mcts_traj_list[i][j+1][1]), self.LINE_TO_DEST_HEIGHT - 0.3))
-                    lines.setThickness(0.8)
+                    lines.setThickness(3.8) #0.8
                     self.__dict__['mcts_traj_{}_{}'.format(i,j)].removeNode()
                     self.__dict__['mcts_traj_{}_{}'.format(i,j)] = NodePath(lines.create(False))
                     self.__dict__['mcts_traj_{}_{}'.format(i,j)].hide(CamMask.Shadow | CamMask.RgbCam)
