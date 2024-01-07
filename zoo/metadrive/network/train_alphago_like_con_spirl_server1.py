@@ -15,7 +15,8 @@ from lzero.model.common import EZNetworkOutput, RepresentationNetwork
 from lzero.model.sampled_efficientzero_model import PredictionNetwork
 from torch import nn
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+from zoo.metadrive.utils.traffic_manager_utils import TrafficMode
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
@@ -25,12 +26,12 @@ expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_agressive/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/compare_straight_aggresive/'
-expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/straight/compare_straight_aggresive/'
+expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/straight/compare_straight_aggresive'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/round'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/inter'
 metadrive_basic_config = dict(
     #exp_name = 'metadrive_train_expert_straight_aggresive',
-    exp_name = 'sep13_continous_data',
+    exp_name = 'alphago_like_v1',
     policy=dict(
         cuda=True,
         model=dict(
@@ -39,11 +40,11 @@ metadrive_basic_config = dict(
             encoder_hidden_size_list=[128, 128, 64],
         ),
         learn=dict(
-            batch_size=256,
+            batch_size=256, #64
             learning_rate=3e-5,
-            lr=1e-4,
+            lr=1e-5,
             epoches=200,
-            epoch_per_save = 2,
+            epoch_per_save = 1,
         ),
     ),
 )
@@ -108,16 +109,16 @@ def main(cfg):
     tb_logger = SummaryWriter('result/{}/log/'.format(cfg.exp_name))
     for param in zt_traj_decoder.parameters():
         param.requires_grad = False
-    model = SpirlEncoder(**cfg.policy.model).to('cuda')
-    #model = ContinousEncoder()
+    # model = SpirlEncoder(**cfg.policy.model)
+    model = ContinousEncoder().to('cuda')
     train_dataset = SPIRLDataset(expert_dir)
     train_loader = DataLoader(train_dataset, cfg.policy.learn.batch_size, shuffle=True, num_workers=8)
     optimizer = Adam(model.parameters(), lr=cfg.policy.learn.lr)
     iter_num = 0
-    # represent_state_dict = model.representation_network.state_dict()
-    # pred_state_dict = model.prediction_network.state_dict()
-    # torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, 0))
-    # torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, 0))
+    represent_state_dict = model.representation_network.state_dict()
+    pred_state_dict = model.prediction_network.state_dict()
+    torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, 0))
+    torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, 0))
 
     for epoch in range(cfg.policy.learn.epoches):
         model.train()
@@ -150,6 +151,11 @@ def main(cfg):
         if(epoch % cfg.policy.learn.epoch_per_save == 0):
             state_dict = model.state_dict()
             torch.save(state_dict, "result/{}/ckpt/{}_ckpt".format(cfg.exp_name, epoch))
+            represent_state_dict = model.representation_network.state_dict()
+            pred_state_dict = model.prediction_network.state_dict()
+            torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, epoch))
+            torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, epoch))
+
 
 
 if __name__ == '__main__':

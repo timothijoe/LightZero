@@ -15,7 +15,8 @@ from lzero.model.common import EZNetworkOutput, RepresentationNetwork
 #from lzero.model.sampled_efficientzero_model import PredictionNetwork
 from lzero.model.muzero_model import PredictionNetwork
 from torch import nn
-
+import os 
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
@@ -25,6 +26,7 @@ expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_agressive/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/compare_straight_aggresive/'
+expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/straight/compare_straight_aggresive'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/round'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/inter'
 metadrive_basic_config = dict(
@@ -42,7 +44,7 @@ metadrive_basic_config = dict(
             learning_rate=3e-5,
             lr=1e-4,
             epoches=200,
-            epoch_per_save = 10,
+            epoch_per_save = 2,
         ),
     ),
 )
@@ -105,7 +107,7 @@ def main(cfg):
     for param in zt_traj_decoder.parameters():
         param.requires_grad = False
     # model = SpirlEncoder(**cfg.policy.model)
-    model = ContinousEncoder()
+    model = ContinousEncoder().to('cuda')
     train_dataset = SPIRLDataset(expert_dir)
     train_loader = DataLoader(train_dataset, cfg.policy.learn.batch_size, shuffle=True, num_workers=8)
     optimizer = Adam(model.parameters(), lr=cfg.policy.learn.lr)
@@ -122,8 +124,8 @@ def main(cfg):
         model.train()
         epoch_loss = 0
         for data_state, gt_label in tqdm(train_loader):
-            data_state = data_state.to(torch.float32)
-            gt_label = gt_label.to(torch.long)
+            data_state = data_state.to(torch.float32).to('cuda')
+            gt_label = gt_label.to(torch.long).to('cuda')
             pred_action = model(data_state)
             loss = loss_function_class(pred_action, gt_label)
             optimizer.zero_grad()
@@ -136,7 +138,10 @@ def main(cfg):
         if(epoch % cfg.policy.learn.epoch_per_save == 0):
             state_dict = model.state_dict()
             torch.save(state_dict, "result/{}/ckpt/{}_ckpt".format(cfg.exp_name, epoch))
-
+            represent_state_dict = model.representation_network.state_dict()
+            pred_state_dict = model.prediction_network.state_dict()
+            torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, epoch))
+            torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, epoch))
 
 if __name__ == '__main__':
     main(main_config)

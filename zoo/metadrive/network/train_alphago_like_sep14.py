@@ -26,11 +26,12 @@ expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_agressive/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/compare_straight_aggresive/'
 expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/straight/compare_straight_aggresive/'
+expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/inter_agressive/'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/round'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/inter'
 metadrive_basic_config = dict(
     #exp_name = 'metadrive_train_expert_straight_aggresive',
-    exp_name = 'sep13_continous_data',
+    exp_name = 'sep14_continous_data_inter',
     policy=dict(
         cuda=True,
         model=dict(
@@ -96,7 +97,7 @@ class ContinousEncoder(nn.Module):
 
 zt_traj_decoder = CCDecoder(
     control_num = 2,
-    seq_len = 1,
+    seq_len = 10,
     use_relative_pos = True,
     dt = 0.1,
     traj_control_mode = 'acc',

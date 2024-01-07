@@ -7,15 +7,16 @@ from easydict import EasyDict
 from tqdm import tqdm
 from spirl_model import SpirlEncoder
 #from spirl_dataset import SPIRLDataset
-from spirl_traj_dataset import SPIRLDataset
-from utils import mk_logdir, loss_function
+from spirl_discrete_traj_dataset import SPIRLDataset
+from utils import mk_logdir, loss_function, loss_function_class
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
 from zoo.metadrive.utils.control_decoder import CCDecoder
 from lzero.model.common import EZNetworkOutput, RepresentationNetwork
 from lzero.model.sampled_efficientzero_model import PredictionNetwork
+#from lzero.model.muzero_model import PredictionNetwork
 from torch import nn
 import os 
-os.environ['CUDA_VISIBLE_DEVICES'] = "1"
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
@@ -25,12 +26,12 @@ expert_dir = '/home/hunter/hoffung/expert_data_collection/straight_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_wild/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/inter_agressive/'
 expert_dir = '/home/hunter/hoffung/expert_data_collection/compare_straight_aggresive/'
-expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/straight/compare_straight_aggresive/'
+expert_dir = '/home/rpai_lab_server_1/timothy/alphago_like_data/straight/compare_straight_aggresive'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/round'
 # expert_dir = '/home/zhoutong/hoffung/expert_data_collection/inter'
 metadrive_basic_config = dict(
     #exp_name = 'metadrive_train_expert_straight_aggresive',
-    exp_name = 'sep13_continous_data',
+    exp_name = 'metadrive_zt4_discrete_sez',
     policy=dict(
         cuda=True,
         model=dict(
@@ -39,7 +40,7 @@ metadrive_basic_config = dict(
             encoder_hidden_size_list=[128, 128, 64],
         ),
         learn=dict(
-            batch_size=256,
+            batch_size=64,
             learning_rate=3e-5,
             lr=1e-4,
             epoches=200,
@@ -70,8 +71,8 @@ class ContinousEncoder(nn.Module):
         )
         self.prediction_network = PredictionNetwork(
             [5,200,200],
-            True,
-            2,
+            False,
+            49,
             1,
             64,
             16,
@@ -91,7 +92,7 @@ class ContinousEncoder(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         latent_state = self.representation_network(x)
         policy_logits, value = self.prediction_network(latent_state)
-        return policy_logits[:, :2]
+        return policy_logits
 
 
 zt_traj_decoder = CCDecoder(
@@ -108,16 +109,16 @@ def main(cfg):
     tb_logger = SummaryWriter('result/{}/log/'.format(cfg.exp_name))
     for param in zt_traj_decoder.parameters():
         param.requires_grad = False
-    model = SpirlEncoder(**cfg.policy.model).to('cuda')
-    #model = ContinousEncoder()
+    # model = SpirlEncoder(**cfg.policy.model)
+    model = ContinousEncoder().to('cuda')
     train_dataset = SPIRLDataset(expert_dir)
     train_loader = DataLoader(train_dataset, cfg.policy.learn.batch_size, shuffle=True, num_workers=8)
     optimizer = Adam(model.parameters(), lr=cfg.policy.learn.lr)
     iter_num = 0
-    # represent_state_dict = model.representation_network.state_dict()
-    # pred_state_dict = model.prediction_network.state_dict()
-    # torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, 0))
-    # torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, 0))
+    represent_state_dict = model.representation_network.state_dict()
+    pred_state_dict = model.prediction_network.state_dict()
+    torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, 0))
+    torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, 0))
 
     for epoch in range(cfg.policy.learn.epoches):
         model.train()
@@ -125,21 +126,11 @@ def main(cfg):
         sub_iter = 0
         model.train()
         epoch_loss = 0
-        for data_state, data_vehicle_state, gt_trajs in tqdm(train_loader):
+        for data_state, gt_label in tqdm(train_loader):
             data_state = data_state.to(torch.float32).to('cuda')
-            data_vehicle_state = data_vehicle_state.to(torch.float32).to('cuda')
-            gt_trajs = gt_trajs.to(torch.float32).to('cuda')
-
+            gt_label = gt_label.to(torch.long).to('cuda')
             pred_action = model(data_state)
-            init_state = data_vehicle_state
-            traj = zt_traj_decoder(pred_action, init_state)
-            init_state = init_state[:,:4]
-            traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
-            valid_traj = traj 
-            traj = traj[:,:,:2]
-
-
-            loss = loss_function(traj, gt_trajs)
+            loss = loss_function_class(pred_action, gt_label)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -150,7 +141,10 @@ def main(cfg):
         if(epoch % cfg.policy.learn.epoch_per_save == 0):
             state_dict = model.state_dict()
             torch.save(state_dict, "result/{}/ckpt/{}_ckpt".format(cfg.exp_name, epoch))
-
+            represent_state_dict = model.representation_network.state_dict()
+            pred_state_dict = model.prediction_network.state_dict()
+            torch.save(represent_state_dict, "result/{}/ckpt/represent_{}_ckpt".format(cfg.exp_name, epoch))
+            torch.save(pred_state_dict, "result/{}/ckpt/pred_{}_ckpt".format(cfg.exp_name, epoch))
 
 if __name__ == '__main__':
     main(main_config)
