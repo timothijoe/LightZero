@@ -35,6 +35,7 @@ pendulum_sampled_efficientzero_config = dict(
             show_seq_traj = True,
             #map='OSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
+            seq_traj_len = 20,
         ),
     ),
     policy=dict(
