@@ -35,6 +35,132 @@ from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
 
 
+import sys
+import os
+from matplotlib import pyplot as plt
+import numpy as np
+import math
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent))
+
+import zoo.metadrive.env.ModelPredictiveTrajectoryGenerator.trajectory_generator as planner
+import zoo.metadrive.env.ModelPredictiveTrajectoryGenerator.motion_model as motion_model
+TABLE_PATH= os.path.dirname(os.path.abspath(__file__)) + "/StateLatticePlanner/lookup_table.csv"
+
+
+def search_nearest_one_from_lookup_table(t_x, t_y, t_yaw, lookup_table):
+    mind = float("inf")
+    minid = -1
+
+    for (i, table) in enumerate(lookup_table):
+        dx = t_x - table[0]
+        dy = t_y - table[1]
+        dyaw = t_yaw - table[2]
+        d = math.sqrt(dx ** 2 + dy ** 2 + dyaw ** 2)
+        if d <= mind:
+            minid = i
+            mind = d
+
+    return lookup_table[minid]
+
+
+def get_lookup_table(table_path):
+    return np.loadtxt(table_path, delimiter=',', skiprows=1)
+
+
+def generate_path(target_states, k0):
+    # x, y, yaw, s, km, kf
+    lookup_table = get_lookup_table(TABLE_PATH)
+    result = []
+
+    for state in target_states:
+        bestp = search_nearest_one_from_lookup_table(
+            state[0], state[1], state[2], lookup_table)
+
+        target = motion_model.State(x=state[0], y=state[1], yaw=state[2])
+        init_p = np.array(
+            [np.hypot(state[0], state[1]), bestp[4], bestp[5]]).reshape(3, 1)
+
+        x, y, yaw, p = planner.optimize_trajectory(target, k0, init_p)
+
+        if x is not None:
+            # print("find good path")
+            result.append(
+                [x[-1], y[-1], yaw[-1], float(p[0]), float(p[1]), float(p[2])])
+
+    print("finish path generation")
+    return result
+
+
+def calc_lane_states(l_center, l_heading, l_width, v_width, d, nxy):
+    """
+
+    calc lane states
+
+    :param l_center: lane lateral position
+    :param l_heading:  lane heading
+    :param l_width:  lane width
+    :param v_width: vehicle width
+    :param d: longitudinal position
+    :param nxy: sampling number
+    :return: state list
+    """
+    xc = d
+    yc = l_center
+
+    states = []
+    for i in range(nxy):
+        delta = -0.5 * (l_width - v_width) + \
+            (l_width - v_width) * i / (nxy - 1)
+        xf = xc - delta * math.sin(l_heading)
+        yf = yc + delta * math.cos(l_heading)
+        yawf = l_heading
+        states.append([xf, yf, yawf])
+
+    return states
+
+
+def lane_state_sampling_one_case(final_theta_degree, dd =20):
+    print('degree:')
+    print(final_theta_degree)
+    k0 = 0.0
+    l_center = 0.1 * final_theta_degree #2.4
+    # l_center = 0.04 * final_theta_degree #2.4
+    l_heading = np.deg2rad(final_theta_degree)
+    l_width = 5.0#5.0
+    v_width = 1.0
+    d = dd
+    nxy = 25
+    states = calc_lane_states(l_center, l_heading, l_width, v_width, d, nxy)
+    result = generate_path(states, k0)
+    path_list = []
+    for table in result:
+        x_c, y_c, yaw_c = motion_model.generate_trajectory(
+            table[3], table[4], table[5], k0)
+        x_new_c = []
+        y_new_c = []
+        theta_new_c = []
+        for i in range(8, len(x_c)):
+            x_new_c.append(x_c[i-8] * 1.0)
+        for i in range(8, len(y_c)):
+            y_new_c.append((y_c[i]-y_c[8])*1.0)
+            theta_new_c.append(yaw_c[i])
+        for i in range(50):
+            x_new_c.append(x_new_c[-1] + 0.1)
+            y_new_c.append(y_new_c[-1] + 0.1 * np.tan(theta_new_c[-1]))
+            theta_new_c.append(theta_new_c[-1])
+        x_new_c = np.array(x_new_c)
+        y_new_c = np.array(y_new_c)
+        theta_new_c = np.array(theta_new_c)
+        lon = np.expand_dims(x_new_c,1)
+        lat = np.expand_dims(y_new_c,1)
+        yaw = np.expand_dims(theta_new_c,1)
+        yaw = yaw * 180 / 3.1415926
+        path = np.hstack((lon, lat, yaw))
+        path_list.append(path)
+    return path_list
+
+
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
     start_seed=0,
@@ -200,6 +326,9 @@ class MetaDriveTrajEnv(BaseEnv):
         self.episode_steps += 1
         macro_actions = self._preprocess_macro_waypoints(actions)
         time_1 = time.time() 
+        degree = 0
+        dd = 12
+        path_list = lane_state_sampling_one_case(degree, dd)
         step_infos = self._step_macro_simulator(macro_actions)
         time_2 = time.time() 
         o, r, d, i = self._get_step_return(actions, step_infos)
