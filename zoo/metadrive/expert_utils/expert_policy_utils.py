@@ -88,6 +88,21 @@ class ExpertIDMPolicy(IDMPolicy):
 
     def act(self, *args, **kwargs):
         # concat lane
+        if(len(args)>=1):
+            # vis_trajs = args[0]
+            # zt_trajs = []
+            # for i in range(len(vis_trajs)):
+            #     zt_traj = []
+            #     traj = vis_trajs[i]
+            #     for j in range(21):
+            #         wp = traj[j* 6,:2]
+            #         zt_traj.append(wp)
+            #     zt_traj = np.array(zt_traj)
+            #     zt_trajs.append(zt_traj)
+            zt_trajs = args[0]
+            self.control_object.mcts_trajs = zt_trajs
+                    
+                    
         sucess = self.move_to_next_road()
         all_objects = self.control_object.lidar.get_surrounding_objects(self.control_object)
         try:

@@ -41,6 +41,7 @@ if __name__ == "__main__":
         save_expert_data = True, 
         expert_data_folder = expert_data_folder,
         seq_traj_len=20,
+        show_seq_traj = True,
     )
     parser = argparse.ArgumentParser()
     parser.add_argument("--observation", type=str, default="lidar", choices=["lidar", "rgb_camera"])

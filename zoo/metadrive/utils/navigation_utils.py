@@ -107,39 +107,40 @@ class HRLNodeNavigation(NodeNetworkNavigation):
             self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
 
     def show_car_pos(self, wp_list, current_time_step, mcts_traj_list = None):
-        #print(current_time_step)
-        cx = wp_list[current_time_step][0]
-        cy = wp_list[current_time_step][1]
-        ncx = wp_list[current_time_step+1][0]
-        ncy = wp_list[current_time_step+1][1]
-        theta = np.arctan2(ncy-cy, ncx-cx)
-        theta = 0.0
+        # #print(current_time_step)
+        # cx = wp_list[current_time_step][0]
+        # cy = wp_list[current_time_step][1]
+        # ncx = wp_list[current_time_step+1][0]
+        # ncy = wp_list[current_time_step+1][1]
+        # theta = np.arctan2(ncy-cy, ncx-cx)
+        # theta = 0.0
+        # lines = LineSegs()
+        # lines.setColor(0.9, 0.9, 0.9, 1.0)
+        # #lines.moveTo(panda_position(wp_list[i][0], self.LINE_TO_DEST_HEIGHT+4))
+        # lines.moveTo(panda_position((cx-0.1*np.sin(theta) , cy + 0.1*np.cos(theta)), self.LINE_TO_DEST_HEIGHT))
+        # lines.drawTo(panda_position((cx + 0.1*np.sin(theta), cy - 0.1*np.cos(theta)), self.LINE_TO_DEST_HEIGHT))
+        # lines.setThickness(10)
+        # self.current_pos_marker.removeNode()
+        # self.current_pos_marker = NodePath(lines.create(False))
+        # self.current_pos_marker.hide(CamMask.Shadow | CamMask.RgbCam)
+        # self.current_pos_marker.reparentTo(self.origin)
+        # for i in range(self.seq_traj_len):
+        #     lines = LineSegs()
+        #     if current_time_step > i:
+        #         lines.setColor(1.0, 0.4, 0.0, 0.7)
+        #     else:
+        #         lines.setColor(0.0, 0.7, 1.0, 0.7)
+        #     #lines.setColor(self.navi_mark_color[0], self.navi_mark_color[1], self.navi_mark_color[2], 0.7)
+        #     #lines.moveTo(panda_position(wp_list[i][0], self.LINE_TO_DEST_HEIGHT+4))
+        #     lines.moveTo(panda_position((wp_list[i][0], wp_list[i][1]), self.LINE_TO_DEST_HEIGHT))
+        #     lines.drawTo(panda_position((wp_list[i+1][0], wp_list[i+1][1]), self.LINE_TO_DEST_HEIGHT))
+        #     lines.setThickness(2)
+        #     self.__dict__['traj_{}'.format(i)].removeNode()
+        #     self.__dict__['traj_{}'.format(i)] = NodePath(lines.create(False))
+        #     self.__dict__['traj_{}'.format(i)].hide(CamMask.Shadow | CamMask.RgbCam)
+        #     self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
+        # mcts_traj_list = None
         lines = LineSegs()
-        lines.setColor(0.9, 0.9, 0.9, 1.0)
-        #lines.moveTo(panda_position(wp_list[i][0], self.LINE_TO_DEST_HEIGHT+4))
-        lines.moveTo(panda_position((cx-0.1*np.sin(theta) , cy + 0.1*np.cos(theta)), self.LINE_TO_DEST_HEIGHT))
-        lines.drawTo(panda_position((cx + 0.1*np.sin(theta), cy - 0.1*np.cos(theta)), self.LINE_TO_DEST_HEIGHT))
-        lines.setThickness(10)
-        self.current_pos_marker.removeNode()
-        self.current_pos_marker = NodePath(lines.create(False))
-        self.current_pos_marker.hide(CamMask.Shadow | CamMask.RgbCam)
-        self.current_pos_marker.reparentTo(self.origin)
-        for i in range(self.seq_traj_len):
-            lines = LineSegs()
-            if current_time_step > i:
-                lines.setColor(1.0, 0.4, 0.0, 0.7)
-            else:
-                lines.setColor(0.0, 0.7, 1.0, 0.7)
-            #lines.setColor(self.navi_mark_color[0], self.navi_mark_color[1], self.navi_mark_color[2], 0.7)
-            #lines.moveTo(panda_position(wp_list[i][0], self.LINE_TO_DEST_HEIGHT+4))
-            lines.moveTo(panda_position((wp_list[i][0], wp_list[i][1]), self.LINE_TO_DEST_HEIGHT))
-            lines.drawTo(panda_position((wp_list[i+1][0], wp_list[i+1][1]), self.LINE_TO_DEST_HEIGHT))
-            lines.setThickness(2)
-            self.__dict__['traj_{}'.format(i)].removeNode()
-            self.__dict__['traj_{}'.format(i)] = NodePath(lines.create(False))
-            self.__dict__['traj_{}'.format(i)].hide(CamMask.Shadow | CamMask.RgbCam)
-            self.__dict__['traj_{}'.format(i)].reparentTo(self.origin)
-        mcts_traj_list = None
         if mcts_traj_list is not None:
             for i in range(self.mcts_traj_num):
                 for j in range(self.seq_traj_len):
@@ -231,6 +232,7 @@ class HRLNodeNavigation(NodeNetworkNavigation):
                 if ego_vehicle.v_indx == 0:
                     #self.draw_car_path(ego_vehicle.v_wps)
                     self.activate_car_pos_marker = True
+                self.activate_car_pos_marker = True
                 if self.activate_car_pos_marker:
                     self.show_car_pos(ego_vehicle.v_wps, ego_vehicle.v_indx, ego_vehicle.mcts_trajs)
 

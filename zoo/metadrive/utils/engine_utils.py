@@ -14,7 +14,8 @@ class MacroBaseEngine(BaseEngine):
         """
         step_infos = {}
         for manager in self._managers.values():
-            if (manager.__class__.__name__ == 'MacroAgentManager'):
+            # if (manager.__class__.__name__ == 'MacroAgentManager'):
+            if (manager.__class__.__name__ == 'ExpertAgentManager'):
                 step_infos.update(manager.before_step(frame, wps))
             else:
                 step_infos.update(manager.before_step())

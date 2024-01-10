@@ -130,7 +130,7 @@ def lane_state_sampling_one_case(final_theta_degree, dd =20):
     l_width = 5.0#5.0
     v_width = 1.0
     d = dd
-    nxy = 25
+    nxy = 30
     states = calc_lane_states(l_center, l_heading, l_width, v_width, d, nxy)
     result = generate_path(states, k0)
     path_list = []
@@ -159,6 +159,26 @@ def lane_state_sampling_one_case(final_theta_degree, dd =20):
         path = np.hstack((lon, lat, yaw))
         path_list.append(path)
     return path_list
+
+
+def convert_wp_to_world_coord(wp, robot_pos):
+    odom_goal = [0.0, 0.0]
+    local_goal = wp
+    delta_length = np.sqrt(local_goal[0] ** 2 + local_goal[1] ** 2)
+    delta_angle = np.arctan2(local_goal[1], local_goal[0])
+    total_angle = delta_angle + robot_pos[2]
+    odom_goal[0] = delta_length * np.cos(total_angle) + robot_pos[0]
+    odom_goal[1] = delta_length * np.sin(total_angle) + robot_pos[1]
+    return odom_goal        
+
+def convert_waypoint_list_coord(wp_list, rbt_pos):
+    # given the robot initial pos, we transfer the traj from origin to initial pos, and rotation
+    wp_w_list = []
+    for wp in wp_list:
+        wp_w = convert_wp_to_world_coord(wp, rbt_pos)
+        wp_w_list.append(wp_w)
+    return wp_w_list
+
 
 
 DIDRIVE_DEFAULT_CONFIG = dict(
@@ -327,9 +347,28 @@ class MetaDriveTrajEnv(BaseEnv):
         macro_actions = self._preprocess_macro_waypoints(actions)
         time_1 = time.time() 
         degree = 0
+        degree = - self.z_state[2] * 180 / 3.1415926
         dd = 12
         path_list = lane_state_sampling_one_case(degree, dd)
-        step_infos = self._step_macro_simulator(macro_actions)
+        
+        zt_trajs = []
+        for i in range(len(path_list)):
+            zt_traj = []
+            traj = path_list[i]
+            for j in range(21):
+                wp = traj[j* 6,:2]
+                zt_traj.append(wp)
+            zt_traj = np.array(zt_traj)
+            zt_trajs.append(zt_traj)  
+        import copy
+        rbt_pos = copy.deepcopy(self.z_state[:3])
+        odom_traj_list = []
+        for zt_traj in zt_trajs:
+            odom_traj = convert_waypoint_list_coord(zt_traj, rbt_pos)
+            odom_traj_list.append(odom_traj)
+        path_list = odom_traj_list     
+        #step_infos = self._step_macro_simulator(macro_actions)
+        step_infos = self._step_macro_simulator(path_list)
         time_2 = time.time() 
         o, r, d, i = self._get_step_return(actions, step_infos)
         time_3 = time.time() 
@@ -599,6 +638,9 @@ class MetaDriveTrajEnv(BaseEnv):
         self.z_xyt = xyt
         if hasattr(vehicle, 'vis_state'):
             vehicle.vis_state = copy.deepcopy(self.z_state)
+        self.z_state[0] = vehicle.position[0]
+        self.z_state[1] = vehicle.position[1]
+        self.z_state[2] = vehicle.heading_theta
 
     def compute_heading_error_list(self, vehicle, lane):
         heading_error_list = []
