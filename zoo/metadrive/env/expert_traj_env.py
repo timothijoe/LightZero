@@ -296,6 +296,7 @@ class MetaDriveTrajEnv(BaseEnv):
             done_info[TerminationState.CRASH_BUILDING] = True
             logging.info("Episode ended! Reason: crash building ")
         if self.step_num >= self.episode_max_step:
+            print('step num is: {} and episode num is: {}'.format(self.step_num, self.episode_max_step))
             done = True
             done_info[TerminationState.CRASH_BUILDING] = True
             logging.info("Episode ended! Reason: crash building ")
@@ -680,7 +681,10 @@ class MetaDriveTrajEnv(BaseEnv):
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
             self.engine.step()
             scene_manager_after_step_infos = self.engine.after_step()
-
+            
+            if frame == 10:
+                for v_id, v in self.vehicles.items():
+                    o = self.observations[v_id].observe(v)
             ego_vehicle = self.vehicles['default_agent']
             ego_position = ego_vehicle.position
             ego_yaw = ego_vehicle.heading_theta 

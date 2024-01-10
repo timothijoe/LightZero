@@ -53,10 +53,9 @@ class ExpertIDMPolicy(IDMPolicy):
         self.const_ref = 0
         self.variation_in_line_type = None 
         self.misalign = False
-        self.left_first = True
         if self.control_object.navigation.expert_type == 'straight_agreesive':
-            self.LANE_CHANGE_FREQ = 100
-            self.NORMAL_SPEED_CONST = 24
+            self.LANE_CHANGE_FREQ = 60
+            self.NORMAL_SPEED_CONST = 27
             pass 
         elif self.control_object.navigation.expert_type == 'straight_wild':
             self.LANE_CHANGE_FREQ = 5000
@@ -331,7 +330,9 @@ class ExpertIDMPolicy(IDMPolicy):
         # if abs(self.control_object.speed - self.NORMAL_SPEED) > 3 and surrounding_objects.has_front_object(
         # ) and abs(surrounding_objects.front_object().speed -
         #           self.NORMAL_SPEED) > 3 and self.overtake_timer > self.LANE_CHANGE_FREQ:
-        if 1 and 1 and 1 and self.overtake_timer > self.LANE_CHANGE_FREQ:
+        if abs(self.control_object.speed - self.NORMAL_SPEED) > 0 and surrounding_objects.has_front_object(
+        ) and abs(surrounding_objects.front_object().speed -
+                  self.NORMAL_SPEED) > 0 and self.overtake_timer > self.LANE_CHANGE_FREQ:
             # may lane change
             right_front_speed = surrounding_objects.right_front_object().speed if surrounding_objects.has_right_front_object() else self.MAX_SPEED \
                 if surrounding_objects.right_lane_exist() and surrounding_objects.right_front_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.right_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE else None
@@ -339,51 +340,19 @@ class ExpertIDMPolicy(IDMPolicy):
             ) else self.MAX_SPEED
             left_front_speed = surrounding_objects.left_front_object().speed if surrounding_objects.has_left_front_object() else self.MAX_SPEED \
                 if surrounding_objects.left_lane_exist() and surrounding_objects.left_front_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE else None
-            if not surrounding_objects.left_lane_exist():
-                self.left_first = False 
-            if not surrounding_objects.right_lane_exist():
-                self.left_first = True 
-            if self.left_first:
-                if left_front_speed is not None and surrounding_objects.left_front_min_distance() - 4 >0 and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
-                    # left overtake has a high priority
-                    expect_lane_idx = current_lanes.index(self.routing_target_lane) - 1
-                    # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
-                    if expect_lane_idx in self.available_routing_index_range:
-                        return surrounding_objects.left_front_object(), surrounding_objects.left_front_min_distance(), \
-                            current_lanes[expect_lane_idx]
-                if right_front_speed is not None and surrounding_objects.right_front_min_distance() - 4 >0 and surrounding_objects.right_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
-                    expect_lane_idx = current_lanes.index(self.routing_target_lane) + 1
-                    # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
-                    if expect_lane_idx in self.available_routing_index_range:
-                        return surrounding_objects.right_front_object(), surrounding_objects.right_front_min_distance(), \
-                            current_lanes[expect_lane_idx]
-            else:
-                if right_front_speed is not None and surrounding_objects.right_front_min_distance() - 4 >0 and surrounding_objects.right_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
-                    expect_lane_idx = current_lanes.index(self.routing_target_lane) + 1
-                    # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
-                    if expect_lane_idx in self.available_routing_index_range:
-                        return surrounding_objects.right_front_object(), surrounding_objects.right_front_min_distance(), \
-                            current_lanes[expect_lane_idx]
-                if left_front_speed is not None and surrounding_objects.left_front_min_distance() - 4 >0 and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
-                    # left overtake has a high priority
-                    expect_lane_idx = current_lanes.index(self.routing_target_lane) - 1
-                    # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
-                    if expect_lane_idx in self.available_routing_index_range:
-                        return surrounding_objects.left_front_object(), surrounding_objects.left_front_min_distance(), \
-                            current_lanes[expect_lane_idx]
-            # if left_front_speed is not None and surrounding_objects.left_front_min_distance() - 4 >0 and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
-            #     # left overtake has a high priority
-            #     expect_lane_idx = current_lanes.index(self.routing_target_lane) - 1
-            #     # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
-            #     if expect_lane_idx in self.available_routing_index_range:
-            #         return surrounding_objects.left_front_object(), surrounding_objects.left_front_min_distance(), \
-            #                current_lanes[expect_lane_idx]
-            # if right_front_speed is not None and surrounding_objects.right_front_min_distance() - 4 >0 and surrounding_objects.right_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
-            #     expect_lane_idx = current_lanes.index(self.routing_target_lane) + 1
-            #     # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
-            #     if expect_lane_idx in self.available_routing_index_range:
-            #         return surrounding_objects.right_front_object(), surrounding_objects.right_front_min_distance(), \
-            #                current_lanes[expect_lane_idx]
+            if left_front_speed is not None and surrounding_objects.left_front_min_distance() - surrounding_objects.front_min_distance() >0 and surrounding_objects.left_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
+                # left overtake has a high priority
+                expect_lane_idx = current_lanes.index(self.routing_target_lane) - 1
+                # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
+                if expect_lane_idx in self.available_routing_index_range:
+                    return surrounding_objects.left_front_object(), surrounding_objects.left_front_min_distance(), \
+                           current_lanes[expect_lane_idx]
+            if right_front_speed is not None and surrounding_objects.right_front_min_distance() - surrounding_objects.front_min_distance() >0 and surrounding_objects.right_back_min_distance() > self.SAFE_LANE_CHANGE_DISTANCE - 3:
+                expect_lane_idx = current_lanes.index(self.routing_target_lane) + 1
+                # self.overtake_timer = self.np_random.randint(0, self.LANE_CHANGE_FREQ)
+                if expect_lane_idx in self.available_routing_index_range:
+                    return surrounding_objects.right_front_object(), surrounding_objects.right_front_min_distance(), \
+                           current_lanes[expect_lane_idx]
 
         # fall back to lane follow
         self.target_speed = self.NORMAL_SPEED
