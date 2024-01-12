@@ -33,7 +33,7 @@ from metadrive.utils.utils import auto_termination
 import torch
 from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder import VaeDecoder
-
+from zoo.metadrive.env.generate_traj import select_trajectory_from_path
 
 import sys
 import os
@@ -327,6 +327,10 @@ class MetaDriveTrajEnv(BaseEnv):
             assert self.config["expert_data_folder"] is not None
             self.single_transition_list = []
 
+        zt_path_dir = '/home/zhoutong/dec_jan/traj_data_process/dataset/metadrive/path_matfiles/jan11_path_turn10m.pickle'
+        import pickle
+        with open(zt_path_dir, 'rb') as file:
+            self.path_dict = pickle.load(file)
     @property
     def observation_space(self):
         return gym.spaces.Box(0, 1, shape=(200, 200, 5), dtype=np.float32)
@@ -341,6 +345,17 @@ class MetaDriveTrajEnv(BaseEnv):
     # define a action type, and execution style
     # Now only one action will be taken, cosin function, and we set dt equals self.engine.dt
     # now that in this situation, we directly set trajectory len equals to simulation frequency
+    
+    def get_vel_vector(self, zt_scale = 10.0):
+        
+        arr1 = np.arange(0, 2.1, 0.1)
+        arr2 = np.ones(len(arr1), dtype=float) * zt_scale
+        result = np.vstack((arr1, arr2))
+        return result 
+
+    def get_path_vector(self, point, theta):
+        return 
+
 
     def step(self, actions: Union[np.ndarray, Dict[AnyStr, np.ndarray]]):
         self.episode_steps += 1
@@ -351,15 +366,51 @@ class MetaDriveTrajEnv(BaseEnv):
         dd = 12
         path_list = lane_state_sampling_one_case(degree, dd)
         
-        zt_trajs = []
-        for i in range(len(path_list)):
-            zt_traj = []
-            traj = path_list[i]
-            for j in range(21):
-                wp = traj[j* 6,:2]
-                zt_traj.append(wp)
-            zt_traj = np.array(zt_traj)
-            zt_trajs.append(zt_traj)  
+        vehicle = self.vehicles['default_agent']
+        forcast = 15 
+        current_lane = vehicle.lane
+        y_list = []
+        long_now, lateral_now = current_lane.local_coordinates(vehicle.position)
+        for index in range(len(vehicle.navigation.current_ref_lanes)):
+            long_target = long_now + forcast
+            lateral_target = vehicle.navigation.current_ref_lanes[index].width / 2
+            position_target = vehicle.navigation.current_ref_lanes[index].position(long_target, lateral_target) 
+            y_target = position_target[1]
+            y_list.append(y_target)
+
+
+
+        min_distance = float('inf')
+        yaw_key = None 
+        for key in self.path_dict.keys():
+            key_float = float(key)
+            distance = np.abs(key_float - degree)
+            if distance < min_distance:
+                min_distance = distance 
+                yaw_key = key 
+
+        # path = self.path_dict[yaw_key]['0.0']['path']
+        selected_keys = list(self.path_dict[yaw_key])[:30]
+        zt_traj_list = []
+        
+        for key in selected_keys:
+            zt_path = self.path_dict[yaw_key][key]['path']
+            zt_traj =  select_trajectory_from_path(zt_path)
+            zt_traj_list.append(zt_traj)
+
+        # zt_traj = select_trajectory_from_path(path)
+
+
+        zt_trajs = zt_traj_list
+        # zt_trajs = []
+        # for i in range(len(path_list)):
+        #     zt_traj = []
+        #     traj = path_list[i]
+        #     for j in range(21):
+        #         wp = traj[j* 6,:2]
+        #         zt_traj.append(wp)
+        #     zt_traj = np.array(zt_traj)
+        #     zt_trajs.append(zt_traj)  
         import copy
         rbt_pos = copy.deepcopy(self.z_state[:3])
         odom_traj_list = []
