@@ -780,6 +780,10 @@ class MetaDriveTrajEnv(BaseEnv):
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
             self.engine.step()
             scene_manager_after_step_infos = self.engine.after_step()
+            if frame == 10:
+                for v_id, v in self.vehicles.items():
+                    o = self.observations[v_id].observe(v)
+                    self.update_current_state(v_id)
         #scene_manager_after_step_infos = self.engine.after_step()
         return merge_dicts(
             scene_manager_after_step_infos, scene_manager_before_step_infos, allow_new_keys=True, without_copy=True

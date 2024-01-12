@@ -129,7 +129,74 @@ class VaeDecoder(nn.Module):
         generated_traj = torch.stack(generated_traj, dim = 1)
         return generated_traj
 
+    def is_straight_trajectory(self, states, y_variation_threshold=1.2, xy_ratio_threshold=6, theta_variation_threshold=0.3, theta_diff_threshold=0.1):
+        # 提取 x, y, 和 theta 列
+        xs = states[:, 0]
+        ys = states[:, 1]
+        thetas = states[:, 2]
+
+        # 检查Y轴波动是否过大
+        if torch.max(ys) - torch.min(ys) > y_variation_threshold:
+            return False
+
+        # 检查X轴是否有足够的变化
+        if (torch.max(xs) - torch.min(xs)) < xy_ratio_threshold * (torch.max(ys) - torch.min(ys)):
+            return False
+
+        # 检查theta的累计变化量
+        cumulative_theta_variation = torch.sum(torch.abs(torch.diff(thetas)))
+        if cumulative_theta_variation > theta_variation_threshold:
+            return False
+
+        # 检查起始和结束点的theta差
+        if torch.abs(thetas[-1] - thetas[0]) > theta_diff_threshold:
+            return False
+        # 如果所有的检查都通过了，那么轨迹是直线
+        return True
+
+
+
+    # def forward(self, z, init_state):
+    #     zt = self.decode(z,init_state)
+    #     print('hidden state: {}'.format(z))
+    #     print('trajecotry: {}'.format(zt[0,:,1]))
+    #     return zt
+    #     return self.decode(z, init_state)
+
+    def recalculate_theta_v(self, traj):
+        # 假设 traj 是一个 N x 4 的 numpy 数组，每行表示一个状态 [x, y, theta, v]
+        # 假设时间间隔 dt 是恒定的
+
+        # 计算 theta
+        # theta 是相邻点与x轴的夹角，用 arctan2 计算 y 分量和 x 分量的角度
+        for i in range(len(traj) - 1):
+            dx = traj[i+1, 0] - traj[i, 0]
+            dy = traj[i+1, 1] - traj[i, 1]
+            traj[i, 2] = torch.atan2(dy, dx)  # 更新 theta
+
+        # 最后一个点的 theta 用倒数第二个点的 theta
+        traj[-1, 2] = traj[-2, 2]
+
+        # 计算 v
+        # v 是两个相邻点之间的距离
+        # 这里我们可以直接用 numpy 的 diff 函数来计算相邻两点间的差异
+        # dx = torch.diff(traj[:, 0])
+        # dy = torch.diff(traj[:, 1])
+        # distances = torch.sqrt(dx**2 + dy**2)
+        # speeds = np.append(distances, 0)  # 最后一个点的速度设为 0 或者用前一个点的速度
+        # traj[:, 3] = speeds  # 更新 v
+
+        return traj
+
     def forward(self, z, init_state):
-        return self.decode(z, init_state)
-
-
+        # return self.decode(z, init_state)
+        traj =  self.decode(z, init_state)
+        is_straight = self.is_straight_trajectory(traj[0])
+        if(is_straight):
+            traj[0, :, 1] *= 0.1
+            traj_new = self.recalculate_theta_v(traj[0])
+            traj[0] = traj_new
+        print('x: {}'.format(traj[0,:,0]))
+        print('y: {}'.format(traj[0,:,1]))
+        print('theta: {}'.format(traj[0,:,2]))
+        return traj

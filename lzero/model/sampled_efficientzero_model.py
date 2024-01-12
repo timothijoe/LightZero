@@ -378,6 +378,10 @@ class SampledEfficientZeroModel(nn.Module):
         #expert_encoder_ckpt_path = '/home/hunter/obelisk/visual_LightZero/model_path/inter_80_model'
         expert_encoder_ckpt_path = pwd + '/model_path/encoder_60_model'
         expert_encoder_ckpt_path ='/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert3/ckpt/150_ckpt'
+        expert_encoder_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan08/ckpt/190_ckpt'
+        expert_encoder_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan10_expcc/ckpt/70_ckpt'
+        
+        #expert_encoder_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan11_expcc_lane_chagne/ckpt/30_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         self.expert_encoder.load_state_dict(checkpoint)
         print('zt')

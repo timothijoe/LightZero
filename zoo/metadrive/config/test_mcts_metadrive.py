@@ -36,6 +36,7 @@ pendulum_sampled_efficientzero_config = dict(
             #map='OSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
             seq_traj_len = 20,
+            avg_speed=3.0,
         ),
     ),
     policy=dict(
@@ -108,6 +109,7 @@ if __name__ == "__main__":
         from lzero.entry.eval_metadrive import eval_metadrive
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
     zt_path = None
+    #zt_path = '/home/rpai_lab_server_1/dec_jan/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
     #zt_path = '/home/PJLAB/puyuan/hoffung/taecrl_data/lz_ckpt/ckpt_best.pth.tar'
 
     eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=20)
