@@ -32,6 +32,8 @@ from metadrive.utils.utils import auto_termination
 import torch
 from metadrive.component.road_network import Road
 from zoo.metadrive.utils.traj_decoder2 import VaeDecoder
+from zoo.metadrive.env.generate_traj import get_lane_lateral_pos, justify_if_lanes_ok
+
 
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
@@ -230,6 +232,10 @@ class MetaDriveTrajEnv(BaseEnv):
         )
         # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))
         self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+        zt_path_dir = '/home/rpai_lab_server_1/osiris/discrete_lz/zoo/metadrive/data/jan11_path_turn10m.pickle'
+        import pickle 
+        with open(zt_path_dir, 'rb') as file:
+            self.path_dict = pickle.load(file)
 
     @property
     def observation_space(self):
@@ -287,6 +293,10 @@ class MetaDriveTrajEnv(BaseEnv):
             addition_actions = self.convert_waypoint_list_coord(traj_cpu, rbt_state)
             # addition_actions = traj_cpu
             actions = np.concatenate((actions, addition_actions), axis=0) 
+        vehicle = self.vehicles['default_agent']
+        rbt_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta])
+        zt_traj_list = get_lane_lateral_pos(vehicle, rbt_pos, self.path_dict)
+        actions = zt_traj_list[0]
         macro_actions = self._preprocess_macro_waypoints(actions)
         step_infos = self._step_macro_simulator(macro_actions)
         o, r, d, i = self._get_step_return(actions, step_infos)

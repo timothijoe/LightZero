@@ -37,6 +37,7 @@ pendulum_sampled_efficientzero_config = dict(
             out_of_route_done=True,  # Game over if driving out of road
             seq_traj_len = 20,
             avg_speed=3.0,
+            use_chase_camera_follow_lane=True,
         ),
     ),
     policy=dict(
