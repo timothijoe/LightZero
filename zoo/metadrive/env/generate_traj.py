@@ -154,7 +154,8 @@ def combine_trajectory(path_ele, vel_ele):
         cur_time = np.array([[t]])
         pose_twist = np.hstack((path.GetPosFromLength(SpeedCoveredDist[-1]),cur_vel, cur_time))
         Ros = np.vstack((Ros, pose_twist))
-    return Ros[:, :2]
+    # return Ros[:, :2]
+    return Ros[:, :4]
 
 def select_trajectory_from_path(path_ele, init_speed = 7.0, acc = 0):
     vel_ele = generate_vel(init_speed, acc)
