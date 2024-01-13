@@ -109,7 +109,28 @@ class MetaVel():
         plt.title('Speed Profile')
         plt.plot(self.t, self.s)
 
-def generate_vel(zt_scale = 7.0):
+def generate_vel(zt_scale = 7.0, acc = 0):
+    # zt_scale = 7.0
+    if acc > 2.0:
+        acc = 2.0
+    elif acc < -2.0:
+        acc = -2.0
+    total_time = 2.0
+    step = 0.1
+    times = [i for i in np.arange(0, total_time + step, step)]
+    initial_speed = zt_scale 
+    speeds = [max(min(initial_speed + acc * t, 8),0) for t in times]
+
+    arr1 = np.array(times)
+    arr2 = np.array(speeds)
+
+
+    # arr1 = np.arange(0, 2.1, 0.1)
+    # arr2 = np.ones(len(arr1), dtype=float) * zt_scale
+    result = np.vstack((arr1, arr2))
+    return result 
+
+def generate_vel_v2(zt_scale = 7.0):
     # zt_scale = 7.0
     arr1 = np.arange(0, 2.1, 0.1)
     arr2 = np.ones(len(arr1), dtype=float) * zt_scale
@@ -133,8 +154,8 @@ def combine_trajectory(path_ele, vel_ele):
         Ros = np.vstack((Ros, pose_twist))
     return Ros[:, :2]
 
-def select_trajectory_from_path(path_ele):
-    vel_ele = generate_vel()
+def select_trajectory_from_path(path_ele, init_speed = 7.0, acc = 0):
+    vel_ele = generate_vel(init_speed, acc)
     return combine_trajectory(path_ele, vel_ele)
 
 
@@ -145,20 +166,11 @@ def select_trajectory_from_path(path_ele):
 def get_lane_lateral_pos(vehicle, robot_pos, path_dict):
     # naive justification, in straight highway
     degree = -robot_pos[2] * 180 / 3.1415926
+    ego_speed_ms = robot_pos[3]
     rbt_pos = copy.deepcopy(robot_pos)
     forcast = 15 
     current_lane = vehicle.lane
-    # y_list = []
-    # y_global_list = []
-    # long_now, lateral_now = current_lane.local_coordinates(vehicle.position)
-    # for index in range(len(vehicle.navigation.current_ref_lanes)):
-    #     long_target = long_now + forcast
-    #     lateral_target = 0 
-    #     position_target = vehicle.navigation.current_ref_lanes[index].position(long_target, lateral_target) 
-    #     position_local = odom_to_local(position_target, rbt_pos)
-    #     y_target = position_local[1]
-    #     y_list.append(y_target)
-    vehicle_status = justify_if_lanes_ok(vehicle)
+    vehicle_status, vehicle_near_speed, vehicle_near_distance = justify_if_lanes_ok(vehicle)
     current_lanes = vehicle.navigation.current_ref_lanes 
     total_lane_num = len(current_lanes)
     current_lane = vehicle.lane 
@@ -205,15 +217,19 @@ def get_lane_lateral_pos(vehicle, robot_pos, path_dict):
         key_y_list.append(copy.deepcopy(y_key))    
     selected_keys = key_y_list 
     zt_traj_list = []  
+
+    acc = calculate_acc_for_maintaing_distance(vehicle_near_distance[valid_idx], ego_speed_ms, vehicle_near_speed[valid_idx]/3.6, desired_distance = 12, t=2)
     
     for key in selected_keys:
         zt_path = path_dict[yaw_key][key]['path']
-        zt_traj =  select_trajectory_from_path(zt_path)
+        zt_traj =  select_trajectory_from_path(zt_path, ego_speed_ms, acc)
         zt_traj_list.append(zt_traj)
     return zt_traj_list 
 
 def justify_if_lanes_ok(vehicle):
     vehicle_status = [False, False, False]
+    vehicle_nearby_speeds = [None, None, None]
+    vehicle_nearby_distance = [None, None, None]
     all_objects=vehicle.lidar.get_surrounding_objects(vehicle) 
     current_lane = vehicle.lane
     surrounding_objects = FrontBackObjects.get_find_front_back_objs(
@@ -227,18 +243,36 @@ def justify_if_lanes_ok(vehicle):
     if surrounding_objects.right_lane_exist() and surrounding_objects.right_front_min_distance() > SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.right_back_min_distance() > SAFE_LANE_CHANGE_DISTANCE:
         # print("can turn right")
         vehicle_status[2] = True
+        vehicle_nearby_speeds[2] = surrounding_objects.right_front_object().speed if surrounding_objects.right_front_object() else 8.0
+        vehicle_nearby_distance[2] = surrounding_objects.right_front_min_distance()
     else:
         # print("can't turn right !!!")
-        vehicle_status[2] = True
+        vehicle_status[2] = False
+        vehicle_nearby_speeds[2] = None
         
     if surrounding_objects.left_lane_exist() and surrounding_objects.left_front_min_distance() > SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.left_back_min_distance() > SAFE_LANE_CHANGE_DISTANCE:    
         # print("can turn left")
         vehicle_status[0] = True
+        vehicle_nearby_speeds[0] = surrounding_objects.left_front_object().speed if surrounding_objects.left_front_object() else 8.0
+        vehicle_nearby_distance[0] = surrounding_objects.left_front_min_distance()
     else:
         vehicle_status[0] = False
+        vehicle_nearby_speeds[0] = None 
 
     if surrounding_objects.front_min_distance() > SAFE_LANE_CHANGE_DISTANCE - 5:
         vehicle_status[1] = True 
+        vehicle_nearby_speeds[1] = surrounding_objects.front_object().speed if surrounding_objects.front_object() else 8.0
+        vehicle_nearby_distance[1] = surrounding_objects.front_min_distance()
     else:
         vehicle_status[1] = False
-    return vehicle_status
+        vehicle_nearby_speeds[1] = surrounding_objects.front_object().speed if surrounding_objects.front_object() else 8.0
+        vehicle_nearby_distance[1] = surrounding_objects.front_min_distance()
+    return vehicle_status, vehicle_nearby_speeds, vehicle_nearby_distance
+
+def calculate_acc_for_maintaing_distance(front_distance, v_ego, v_other, desired_distance = 5, t=2):
+    s_other = v_other * t 
+    final_position_front = front_distance + s_other 
+    final_position_ego = final_position_front - desired_distance 
+    s1_needed = final_position_ego 
+    a = (s1_needed - v_ego * t) * 2 / (t**2)
+    return a 

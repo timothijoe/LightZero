@@ -294,7 +294,7 @@ class MetaDriveTrajEnv(BaseEnv):
             # addition_actions = traj_cpu
             actions = np.concatenate((actions, addition_actions), axis=0) 
         vehicle = self.vehicles['default_agent']
-        rbt_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta])
+        rbt_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
         zt_traj_list = get_lane_lateral_pos(vehicle, rbt_pos, self.path_dict)
         actions = zt_traj_list[0]
         macro_actions = self._preprocess_macro_waypoints(actions)
