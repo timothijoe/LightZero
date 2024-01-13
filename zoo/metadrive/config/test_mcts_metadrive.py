@@ -38,6 +38,7 @@ pendulum_sampled_efficientzero_config = dict(
             seq_traj_len = 20,
             avg_speed=3.0,
             use_chase_camera_follow_lane=True,
+            show_interface = False,
         ),
     ),
     policy=dict(

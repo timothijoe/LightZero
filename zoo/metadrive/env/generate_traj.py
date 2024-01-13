@@ -9,6 +9,8 @@ import copy
 from metadrive.policy.idm_policy import FrontBackObjects
 
 
+is_left_first = True 
+
 ###########################   Coordinate Transformation   ################################################################
 ##########################################################################################################################
 def convert_wp_to_world_coord(wp, robot_pos):
@@ -176,12 +178,27 @@ def get_lane_lateral_pos(vehicle, robot_pos, path_dict):
     current_lane = vehicle.lane 
     current_lane_idx = current_lane.index[-1]
     valid_idx = 0
-    if vehicle_status[0]:
-        valid_idx = 0
-    elif vehicle_status[2]:
-        valid_idx = 2
+    # if vehicle_status[0]:
+    #     valid_idx = 0
+    # elif vehicle_status[2]:
+    #     valid_idx = 2
+    # else:
+    #     valid_idx = 1
+    global is_left_first
+    if is_left_first:
+        if vehicle_status[0]:
+            valid_idx = 0
+        elif vehicle_status[2]:
+            valid_idx = 2
+        else:
+            valid_idx = 1
     else:
-        valid_idx = 1
+        if vehicle_status[2]:
+            valid_idx = 2
+        elif vehicle_status[0]:
+            valid_idx = 0
+        else:
+            valid_idx = 1      
     ref_current_lane_idx = valid_idx + current_lane_idx -1
 
     y_list = []
@@ -267,6 +284,13 @@ def justify_if_lanes_ok(vehicle):
         vehicle_status[1] = False
         vehicle_nearby_speeds[1] = surrounding_objects.front_object().speed if surrounding_objects.front_object() else 8.0
         vehicle_nearby_distance[1] = surrounding_objects.front_min_distance()
+    
+    global is_left_first
+    if not surrounding_objects.left_lane_exist() and is_left_first:
+        is_left_first = False
+    if not surrounding_objects.right_lane_exist() and not is_left_first:
+        is_left_first = True
+
     return vehicle_status, vehicle_nearby_speeds, vehicle_nearby_distance
 
 def calculate_acc_for_maintaing_distance(front_distance, v_ego, v_other, desired_distance = 5, t=2):
