@@ -145,6 +145,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     ignore_first_steer = False,
     add_extra_speed_penalty = False,
     use_cross_line_penalty = False,
+    explicit_expert_obs = False,
 )
 
 
@@ -742,6 +743,28 @@ class MetaDriveTrajEnv(BaseEnv):
                 #o_dict['speed'] = v.last_spd
             else:
                 o_dict = o
+
+            if self.config["explicit_expert_obs"]:
+                vehicle = self.vehicles['default_agent']
+                robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
+                try:
+                    test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
+                    ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+                except:
+                    z = np.array([[-1.3071e-02, -5.7750e-05,  3.3416e-01],
+                                  [-1.6380e-03,  8.9970e-02, -4.9745e-01],
+                                  [-7.3423e-03,  5.8108e-02, -2.0658e-01]])
+                additional_channels = np.zeros((200, 200, 1))
+                original_channels = o_dict['birdview']
+                # combine_channel = np.concatenate((original_channels, additional_channels), axis = 2)
+                additional_channels[0, :3, 0] = z[0]
+                additional_channels[1, :3, 0] = z[1]
+                additional_channels[2, :3, 0] = z[2]
+
+                combine_channel = np.concatenate((original_channels, additional_channels), axis = 2)
+                o_dict['birdview'] = combine_channel
+
+
             obses[v_id] = o_dict
 
             done_function_result, done_infos[v_id] = self.done_function(v_id)
@@ -887,6 +910,48 @@ class MetaDriveTrajEnv(BaseEnv):
                 #o_dict['speed'] = v.last_spd
             else:
                 o_dict = o
+
+            if self.config["explicit_expert_obs"]:
+                try:
+                    vel1 = np.arange(0, 2.1, 0.1)
+                    vel2 = np.arange(0, 2.1, 0.1) * 1.8
+                    vel3 = np.arange(0, 2.1, 0.1) * 1.5
+                    x1 = np.cumsum(vel1) * 0.1
+                    x2 = np.cumsum(vel2) * 0.1
+                    x3 = np.cumsum(vel3) * 0.1
+                    vel1 = np.expand_dims(vel1, axis=1)
+                    vel2 = np.expand_dims(vel2, axis=1)
+                    vel3 = np.expand_dims(vel3, axis=1)
+                    x1 = np.expand_dims(x1, axis=1)
+                    x2 = np.expand_dims(x2, axis=1)
+                    x3 = np.expand_dims(x3, axis=1)
+                    zeros = np.zeros_like(x1)
+                    traj1 = np.concatenate((x1, zeros, zeros, vel1), axis=1)
+                    traj2 = np.concatenate((x2, zeros, zeros, vel2), axis=1)
+                    traj3 = np.concatenate((x3, zeros, zeros, vel3), axis=1)
+                    test_zt = []
+                    test_zt.append(traj1)
+                    test_zt.append(traj2)
+                    test_zt.append(traj3)
+                    ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+                except:
+                    z = np.array([[-1.3071e-02, -5.7750e-05,  3.3416e-01],
+                                  [-1.6380e-03,  8.9970e-02, -4.9745e-01],
+                                  [-7.3423e-03,  5.8108e-02, -2.0658e-01]])
+
+                additional_channels = np.zeros((200, 200, 1))
+                original_channels = o_dict['birdview']
+                # combine_channel = np.concatenate((original_channels, additional_channels), axis = 2)
+                additional_channels[0, :3, 0] = z[0]
+                additional_channels[1, :3, 0] = z[1]
+                additional_channels[2, :3, 0] = z[2]
+
+                combine_channel = np.concatenate((original_channels, additional_channels), axis = 2)
+                o_dict['birdview'] = combine_channel
+
+
+
+
             o_reset = o_dict
             if hasattr(v, 'macro_succ'):
                 v.macro_succ = False
