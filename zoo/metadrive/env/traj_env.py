@@ -33,6 +33,11 @@ import torch
 from metadrive.component.road_network import Road
 # from zoo.metadrive.utils.traj_decoder import VaeDecoder
 from zoo.metadrive.utils.traj_decoder2 import VaeDecoder
+
+from zoo.metadrive.env.generate_traj import get_lane_lateral_pos, justify_if_lanes_ok , get_expert_candidates
+from zoo.metadrive.env.generate_vae import get_auto_encoder, VaeDecoder2, VaeEncoder2, get_auto_encoder2
+
+
 DIDRIVE_DEFAULT_CONFIG = dict(
     # ===== Generalization =====
     start_seed=0,
@@ -113,6 +118,7 @@ DIDRIVE_DEFAULT_CONFIG = dict(
     #episode_max_step = 100,
     
     zt_mcts = True,
+    traj_latent_space = 5,
 
     
 
@@ -233,13 +239,40 @@ class MetaDriveTrajEnv(BaseEnv):
         self._traj_decoder = VaeDecoder(
             embedding_dim = 64,
             h_dim = 64,
-            latent_dim = 3,
+            latent_dim = self.config['traj_latent_space'],
             seq_len = self.config["seq_traj_len"],
             dt = 0.1,
             steer_rate_constrain_value=0.5,
         )
-        # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))
-        self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+        self._traj_decoder2 = VaeDecoder2(
+            embedding_dim = 64, 
+            h_dim = 64, 
+            latent_dim = 3,#5
+            seq_len = self.config["seq_traj_len"],
+            dt = 0.1,
+            steer_rate_constrain_value = 0.5,
+        )
+        self._traj_encoder2 = VaeEncoder2(
+            embedding_dim = 64,
+            h_dim = 64,
+            latent_dim = 3,#5
+            seq_len = self.config["seq_traj_len"],
+            use_relative_pos = True, 
+            dt = 0.1,
+        )
+        # self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+        zt_path_dir = 'zoo/metadrive/data/jan11_path_turn10m.pickle'
+        encoder_path = 'zoo/metadrive/data/99_encoder'
+        decoder_path = 'zoo/metadrive/data/99_decoder'
+        encoder_path = '/home/rpai_lab_server_1/dec_jan/traj_data_process/result/zt_jan14_003/ckpt/23_encoder_ckpt'
+        decoder_path = '/home/rpai_lab_server_1/dec_jan/traj_data_process/result/zt_jan14_003/ckpt/23_decoder_ckpt'
+        self._traj_encoder2.load_state_dict(torch.load(encoder_path,map_location=torch.device('cpu')))
+        self._traj_decoder2.load_state_dict(torch.load(decoder_path,map_location=torch.device('cpu')))
+        import pickle 
+        with open(zt_path_dir, 'rb') as file:
+            self.path_dict = pickle.load(file)
+
+
 
     @property
     def observation_space(self):
@@ -299,6 +332,15 @@ class MetaDriveTrajEnv(BaseEnv):
         #     trajs = trajs[:,:,:2]
         #     trajs = torch.squeeze(trajs, 0)
         #     actions = trajs.numpy()
+        vehicle = self.vehicles['default_agent']
+        robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
+        zt_traj_list = get_lane_lateral_pos(vehicle, robot_pos, self.path_dict)
+        test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
+        actions = zt_traj_list[0]
+        ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
+        ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+        if self.step_num % 2 ==1:
+            actions = ztt
         macro_actions = self._preprocess_macro_waypoints(actions)
         step_infos = self._step_macro_simulator(macro_actions)
         o, r, d, i = self._get_step_return(actions, step_infos)

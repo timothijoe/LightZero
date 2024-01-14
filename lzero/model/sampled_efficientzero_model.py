@@ -397,14 +397,17 @@ class SampledEfficientZeroModel(nn.Module):
     
     def get_expert_action(self, obs):
         expert_action = self.expert_encoder(obs)
+        # expert_action = obs[:,4,0,:5]
         return expert_action 
 
     def get_expert_action_wild(self, obs):
         expert_action = self.expert_encoder_wild(obs)
+        # expert_action = obs[:,4,0,:5]
         return expert_action 
 
     def get_expert_action_agressive(self, obs):
         expert_action = self.expert_encoder_agressive(obs)
+        # expert_action = obs[:,4,0,:5]
         return expert_action 
 
     def initial_inference(self, obs: torch.Tensor) -> EZNetworkOutput:
