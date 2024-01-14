@@ -336,6 +336,7 @@ def get_auto_encoder2(vae_encoder, vae_decoder, expert_traj):
         recons_traj = vae_decoder(z, init_state)
     recons_traj = recons_traj.numpy()
     init_state_cpu = init_state.numpy()
+    z = z.numpy()
     init_state_cpu = np.expand_dims(init_state_cpu, axis=1)
     traj = np.concatenate((init_state_cpu, recons_traj), axis=1)
     z = z[0]

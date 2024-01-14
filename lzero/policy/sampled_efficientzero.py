@@ -1272,6 +1272,8 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_latent_action = self._collect_model.get_expert_action(expert_frame)
                 expert_latent_action_wild = self._collect_model.get_expert_action_wild(expert_frame)
                 expert_latent_action_agressive = self._collect_model.get_expert_action_agressive(expert_frame)
+                expert_latent_action_zt = expert_latent_action
+                expert_latent_action_agressive_zt = expert_latent_action_agressive
                 device = expert_latent_action.device
                 expert_latent_action = torch.clamp(
                     expert_latent_action, torch.tensor(-1 + 1e-6).to(device), torch.tensor(1 - 1e-6).to(device)
@@ -1353,7 +1355,8 @@ class SampledEfficientZeroPolicy(Policy):
                         action = int(action)
                     elif len(action.shape) == 1:
                         action = int(action[0])
-
+                # action = expert_latent_action_zt.cpu().detach().numpy()
+                # action = expert_latent_action_agressive_zt.cpu().detach().numpy()
                 output[env_id] = {
                     'action': action,
                     'distributions': distributions,

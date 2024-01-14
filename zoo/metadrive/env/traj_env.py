@@ -237,14 +237,14 @@ class MetaDriveTrajEnv(BaseEnv):
         #     one_side_class_vae=False,
         #     steer_rate_constrain_value=0.5,
         # )
-        self._traj_decoder = VaeDecoder(
-            embedding_dim = 64,
-            h_dim = 64,
-            latent_dim = self.config['traj_latent_space'],
-            seq_len = self.config["seq_traj_len"],
-            dt = 0.1,
-            steer_rate_constrain_value=0.5,
-        )
+        # self._traj_decoder = VaeDecoder(
+        #     embedding_dim = 64,
+        #     h_dim = 64,
+        #     latent_dim = self.config['traj_latent_space'],
+        #     seq_len = self.config["seq_traj_len"],
+        #     dt = 0.1,
+        #     steer_rate_constrain_value=0.5,
+        # )
         self._traj_decoder2 = VaeDecoder2(
             embedding_dim = 64, 
             h_dim = 64, 
@@ -265,13 +265,18 @@ class MetaDriveTrajEnv(BaseEnv):
         zt_path_dir = 'zoo/metadrive/data/jan11_path_turn10m.pickle'
         encoder_path = 'zoo/metadrive/data/99_encoder'
         decoder_path = 'zoo/metadrive/data/99_decoder'
-        encoder_path = '/home/rpai_lab_server_1/dec_jan/traj_data_process/result/zt_jan14_003/ckpt/23_encoder_ckpt'
-        decoder_path = '/home/rpai_lab_server_1/dec_jan/traj_data_process/result/zt_jan14_003/ckpt/23_decoder_ckpt'
+        encoder_path = 'zoo/metadrive/data/23_encoder'
+        decoder_path = 'zoo/metadrive/data/23_decoder'
+        # encoder_path = '/home/rpai_lab_server_1/dec_jan/traj_data_process/result/zt_jan14_003/ckpt/23_encoder_ckpt'
+        # decoder_path = '/home/rpai_lab_server_1/dec_jan/traj_data_process/result/zt_jan14_003/ckpt/23_decoder_ckpt'
         self._traj_encoder2.load_state_dict(torch.load(encoder_path,map_location=torch.device('cpu')))
         self._traj_decoder2.load_state_dict(torch.load(decoder_path,map_location=torch.device('cpu')))
         import pickle 
         with open(zt_path_dir, 'rb') as file:
             self.path_dict = pickle.load(file)
+
+
+        self.test_traj_list = None
 
 
 
@@ -303,52 +308,30 @@ class MetaDriveTrajEnv(BaseEnv):
             latent_action = torch.from_numpy(actions)
             latent_action = latent_action.unsqueeze(0).to(torch.float32)
             with torch.no_grad():
-                traj = self._traj_decoder(latent_action, init_state)
+                traj = self._traj_decoder2(latent_action, init_state)
             init_state = init_state[:,:4]
             traj = torch.cat([init_state.unsqueeze(1), traj], dim = 1)
             traj = traj[0,:,:2]
             traj_cpu = traj.detach().to('cpu').numpy()
             actions = traj_cpu
-        
-        
-        
-        # if not isinstance(actions,list):
-        #     action_seq = []
-        #     for i in range(31):
-        #         action_seq.append([actions[2 * i], actions[2 *i+1]])
-        #     actions = action_seq
-        #action_seq =  np.array(action_seq)
-        # init_state = np.zeros([1, 4])
-        # init_state[0,3] = self.vel_speed
-        # init_state = torch.from_numpy(init_state)
-        #actions = np.array([1,1])
-        # if isinstance(actions, np.ndarray):
-        #     batch_action = torch.from_numpy(actions)
-        #     batch_action = torch.unsqueeze(batch_action, 0)
-        #     batch_action = batch_action.to(torch.float32)
-        #     init_state = init_state.to(torch.float32)
-        #     with torch.no_grad():
-        #         trajs = self.vae_decoder(batch_action, init_state)
-        #     trajs = torch.cat([init_state.unsqueeze(1), trajs], dim = 1)
-        #     trajs = trajs[:,:,:2]
-        #     trajs = torch.squeeze(trajs, 0)
-        #     actions = trajs.numpy()
-        vehicle = self.vehicles['default_agent']
-        robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
-        zt_traj_list = get_lane_lateral_pos(vehicle, robot_pos, self.path_dict)
-        test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
-        actions = zt_traj_list[0]
-        ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
-        ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
-        if self.step_num % 2 ==1:
-            actions = ztt
+
+        # vehicle = self.vehicles['default_agent']
+        # robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
+        # zt_traj_list = get_lane_lateral_pos(vehicle, robot_pos, self.path_dict)
+        # test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
+        # actions = zt_traj_list[0]
+        # ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
+        # ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+        # if self.step_num % 2 ==1:
+        #     actions = ztt
+        # actions = ztt
+        # if self.test_traj_list is not None:
+        #     actions = self.test_traj_list
         macro_actions = self._preprocess_macro_waypoints(actions)
         step_infos = self._step_macro_simulator(macro_actions)
         o, r, d, i = self._get_step_return(actions, step_infos)
         self.step_num = self.step_num + 1
         self.episode_rwd = self.episode_rwd + r 
-        #print('step number is: {}'.format(self.step_num))
-        #o = o.transpose((2,0,1))
         return o, r, d, i
 
     def get_waypoint_list(self):
@@ -744,12 +727,29 @@ class MetaDriveTrajEnv(BaseEnv):
             else:
                 o_dict = o
 
+
+            # vehicle = self.vehicles['default_agent']
+            # robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
+            # zt_traj_list = get_lane_lateral_pos(vehicle, robot_pos, self.path_dict)
+            # test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
+            # actions = zt_traj_list[0]
+            # ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
+            # ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+            # if self.step_num % 2 ==1:
+            #     actions = ztt
+            # # actions = ztt
+            # self.test_traj_list = actions
+
+
             if self.config["explicit_expert_obs"]:
                 vehicle = self.vehicles['default_agent']
                 robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
                 try:
                     test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
                     ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+
+                    # self.test_traj_list = test_zt[2] #ztt2[0]
+
                 except:
                     z = np.array([[-1.3071e-02, -5.7750e-05,  3.3416e-01],
                                   [-1.6380e-03,  8.9970e-02, -4.9745e-01],
@@ -951,7 +951,7 @@ class MetaDriveTrajEnv(BaseEnv):
 
 
 
-
+            self.test_traj_list = None
             o_reset = o_dict
             if hasattr(v, 'macro_succ'):
                 v.macro_succ = False

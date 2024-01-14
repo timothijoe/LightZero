@@ -387,12 +387,12 @@ class SampledEfficientZeroModel(nn.Module):
         expert_encoder_agressive_path = pwd + '/model_path/straight_wild_model'
         expert_encoder_agressive_path ='/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan09_expcc/ckpt/70_ckpt'
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
-        checkpoint = torch.load(expert_encoder_ckpt_path)
-        checkpoint_wild = torch.load(expert_encoder_wild_path)
-        checkpoint_agressive = torch.load(expert_encoder_agressive_path)
-        self.expert_encoder.load_state_dict(checkpoint)
-        self.expert_encoder_wild.load_state_dict(checkpoint_wild)
-        self.expert_encoder_agressive.load_state_dict(checkpoint_agressive)
+        # checkpoint = torch.load(expert_encoder_ckpt_path)
+        # checkpoint_wild = torch.load(expert_encoder_wild_path)
+        # checkpoint_agressive = torch.load(expert_encoder_agressive_path)
+        # self.expert_encoder.load_state_dict(checkpoint)
+        # self.expert_encoder_wild.load_state_dict(checkpoint_wild)
+        # self.expert_encoder_agressive.load_state_dict(checkpoint_agressive)
         print('zt')
     
     def get_expert_action(self, obs):
