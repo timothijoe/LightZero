@@ -378,11 +378,14 @@ class SampledEfficientZeroModel(nn.Module):
         import os 
         pwd = os.getcwd()
         expert_encoder_ckpt_path = pwd + '/model_path/encoder_60_model'
+        expert_encoder_ckpt_path = '/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan08/ckpt/190_ckpt'
         # expert_encoder_ckpt_path = pwd + '/model_path/' + local_encoder_ckpt_path
         expert_encoder_wild_path = pwd + '/model_path/expcc_60_model'
+        expert_encoder_wild_path ='/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan10_expcc/ckpt/70_ckpt'
         #expert_encoder_wild_path = pwd + '/model_path/straight_wild_model'
         #expert_encoder_agressive_path = pwd + '/model_path/straight_agressive_model'
         expert_encoder_agressive_path = pwd + '/model_path/straight_wild_model'
+        expert_encoder_agressive_path ='/home/rpai_lab_server_1/osiris/debug_lz/result/metadrive_train_expert5_jan09_expcc/ckpt/70_ckpt'
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         checkpoint_wild = torch.load(expert_encoder_wild_path)
