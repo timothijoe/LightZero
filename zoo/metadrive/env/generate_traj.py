@@ -209,6 +209,10 @@ def get_lane_lateral_pos(vehicle, robot_pos, path_dict):
             continue
         long_target = long_now + forcast
         lateral_target = 0 
+        if index == 0:
+            lateral_target = 0.4
+        elif index == len(vehicle.navigation.current_ref_lanes) - 1:
+            lateral_target = -0.4
         position_target = vehicle.navigation.current_ref_lanes[index].position(long_target, lateral_target) 
         position_local = odom_to_local(position_target, rbt_pos)
         y_target = position_local[1]
@@ -258,7 +262,8 @@ def justify_if_lanes_ok(vehicle):
         vehicle.navigation.current_ref_lanes,
     )
     SAFE_LANE_CHANGE_DISTANCE = 15
-    if surrounding_objects.right_lane_exist() and surrounding_objects.right_front_min_distance() > SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.right_back_min_distance() > SAFE_LANE_CHANGE_DISTANCE:
+    SAFE_LANE_CHANGE_DISTBACK = 9
+    if surrounding_objects.right_lane_exist() and surrounding_objects.right_front_min_distance() > SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.right_back_min_distance() > SAFE_LANE_CHANGE_DISTBACK:
         # print("can turn right")
         vehicle_status[2] = True
         vehicle_nearby_speeds[2] = surrounding_objects.right_front_object().speed if surrounding_objects.right_front_object() else 8.0
@@ -268,7 +273,7 @@ def justify_if_lanes_ok(vehicle):
         vehicle_status[2] = False
         vehicle_nearby_speeds[2] = None
         
-    if surrounding_objects.left_lane_exist() and surrounding_objects.left_front_min_distance() > SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.left_back_min_distance() > SAFE_LANE_CHANGE_DISTANCE:    
+    if surrounding_objects.left_lane_exist() and surrounding_objects.left_front_min_distance() > SAFE_LANE_CHANGE_DISTANCE and surrounding_objects.left_back_min_distance() > SAFE_LANE_CHANGE_DISTBACK:    
         # print("can turn left")
         vehicle_status[0] = True
         vehicle_nearby_speeds[0] = surrounding_objects.left_front_object().speed if surrounding_objects.left_front_object() else 8.0

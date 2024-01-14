@@ -233,7 +233,7 @@ class MetaDriveTrajEnv(BaseEnv):
         self._traj_decoder2 = VaeDecoder2(
             embedding_dim = 64,
             h_dim = 64,
-            latent_dim = 4,
+            latent_dim = 5,
             seq_len = self.config["seq_traj_len"],
             dt = 0.1,
             steer_rate_constrain_value=0.5,
@@ -241,16 +241,20 @@ class MetaDriveTrajEnv(BaseEnv):
         self._traj_encoder2 = VaeEncoder2(
             embedding_dim = 64,
             h_dim = 64,
-            latent_dim = 4,
+            latent_dim = 5,
             seq_len = self.config["seq_traj_len"],
             use_relative_pos = True,
             dt = 0.1,
         )
         # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))
-        self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
-        zt_path_dir = '/home/rpai_lab_server_1/osiris/discrete_lz/zoo/metadrive/data/jan11_path_turn10m.pickle'
-        encoder_path = '/home/rpai_lab_server_1/Downloads/99_encoder_ckpt'
-        decoder_path = '/home/rpai_lab_server_1/Downloads/99_decoder_ckpt'
+        # self._traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+        zt_path_dir = '/home/zhoutong/dec_jan/traj_data_process/dataset/metadrive/path_matfiles/jan11_path_turn10m.pickle'
+        zt_path_dir = 'zoo/metadrive/data/jan11_path_turn10m.pickle'
+        #zt_path_dir = '/home/zhoutong/dec_jan/traj_data_process/dataset/metadrive/path_matfiles/jan11_path_turn15m.pickle'
+        encoder_path = '/home/zhoutong/dec_jan/traj_data_process/result/zt_jan13_013/ckpt/99_encoder'
+        decoder_path = '/home/zhoutong/dec_jan/traj_data_process/result/zt_jan13_013/ckpt/99_decoder'
+        encoder_path = 'zoo/metadrive/data/99_encoder_ckpt'
+        decoder_path = 'zoo/metadrive/data/99_decoder_ckpt'
         self._traj_encoder2.load_state_dict(torch.load(encoder_path,map_location=torch.device('cpu')))
         self._traj_decoder2.load_state_dict(torch.load(decoder_path,map_location=torch.device('cpu')))
         import pickle 
@@ -318,7 +322,9 @@ class MetaDriveTrajEnv(BaseEnv):
         zt_traj_list = get_lane_lateral_pos(vehicle, rbt_pos, self.path_dict)
         actions = zt_traj_list[0]
         ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
-        actions = ztt
+        # actions = ztt
+        if self.step_num % 2 ==1:
+            actions = ztt
         macro_actions = self._preprocess_macro_waypoints(actions)
         step_infos = self._step_macro_simulator(macro_actions)
         o, r, d, i = self._get_step_return(actions, step_infos)
@@ -811,6 +817,7 @@ class MetaDriveTrajEnv(BaseEnv):
             # we use frame to update robot position, and use wps to represent the whole trajectory
             scene_manager_before_step_infos = self.engine.before_step_macro(frame, wps)
             self.engine.step()
+            time.sleep(0.02)
             scene_manager_after_step_infos = self.engine.after_step()
             if frame == 10:
                 for v_id, v in self.vehicles.items():

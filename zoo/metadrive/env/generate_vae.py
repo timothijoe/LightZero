@@ -5,7 +5,56 @@ import torch.nn.functional as F
 import math 
 from torch.distributions import Normal, Independent
 
-
+def one_hot(val: torch.LongTensor, num: int, num_first: bool = False) -> torch.FloatTensor:
+    r"""
+    Overview:
+        Convert a ``torch.LongTensor`` to one hot encoding.
+        This implementation can be slightly faster than ``torch.nn.functional.one_hot``
+    Arguments:
+        - val (:obj:`torch.LongTensor`): each element contains the state to be encoded, the range should be [0, num-1]
+        - num (:obj:`int`): number of states of the one hot encoding
+        - num_first (:obj:`bool`): If ``num_first`` is False, the one hot encoding is added as the last; \
+            Otherwise as the first dimension.
+    Returns:
+        - one_hot (:obj:`torch.FloatTensor`)
+    Example:
+        >>> one_hot(2*torch.ones([2,2]).long(),3)
+        tensor([[[0., 0., 1.],
+                 [0., 0., 1.]],
+                [[0., 0., 1.],
+                 [0., 0., 1.]]])
+        >>> one_hot(2*torch.ones([2,2]).long(),3,num_first=True)
+        tensor([[[0., 0.], [1., 0.]],
+                [[0., 1.], [0., 0.]],
+                [[1., 0.], [0., 1.]]])
+    """
+    assert (isinstance(val, torch.Tensor)), type(val)
+    assert val.dtype == torch.long
+    assert (len(val.shape) >= 1)
+    old_shape = val.shape
+    val_reshape = val.reshape(-1, 1)
+    ret = torch.zeros(val_reshape.shape[0], num, device=val.device)
+    # To remember the location where the original value is -1 in val.
+    # If the value is -1, then it should be converted to all zeros encodings and
+    # the corresponding entry in index_neg_one is 1, which is used to transform
+    # the ret after the operation of ret.scatter_(1, val_reshape, 1) to their correct encodings bellowing
+    index_neg_one = torch.eq(val_reshape, -1).long()
+    if index_neg_one.sum() != 0:  # if -1 exists in val
+        # convert the original value -1 to 0
+        val_reshape = torch.where(
+            val_reshape != -1, val_reshape,
+            torch.zeros(val_reshape.shape, device=val.device).long()
+        )
+    try:
+        ret.scatter_(1, val_reshape, 1)
+        if index_neg_one.sum() != 0:  # if -1 exists in val
+            ret = ret * (1 - index_neg_one)  # change -1's encoding from [1,0,...,0] to [0,0,...,0]
+    except RuntimeError:
+        raise RuntimeError('value: {}\nnum: {}\t:val_shape: {}\n'.format(val_reshape, num, val_reshape.shape))
+    if num_first:
+        return ret.permute(1, 0).reshape(num, *old_shape)
+    else:
+        return ret.reshape(*old_shape, num)
 def compute_theta_change(traj1):
     # traj = np.transpose(traj1)
     traj = traj1
@@ -44,17 +93,14 @@ class VaeEncoder2(nn.Module):
         self.seq_len = seq_len 
         self.use_relative_pos = use_relative_pos
         self.dt = dt
-        self.device = torch.device('cpu') #torch.device('cuda:0')
+        self.device = torch.device('cpu')#torch.device('cuda:0')
 
         # input: x, y, theta, v,   output: embedding
         self.spatial_embedding = nn.Linear(2, self.embedding_dim)
 
         enc_mid_dims = [self.h_dim, self.h_dim, self.h_dim, self.latent_dim]
-        enc_mid_dims2 = [self.h_dim, self.h_dim, self.h_dim, int(self.embedding_dim / 4)]
         mu_modules = []
         sigma_modules = []
-        cur_hist_list = []
-        theta_info_list = []
         in_channels = self.h_dim
         for m_dim in enc_mid_dims:
             mu_modules.append(
@@ -70,27 +116,9 @@ class VaeEncoder2(nn.Module):
                     nn.LeakyReLU())
             )
             in_channels = m_dim  
-        in_channels = 30
-        for m_dim in enc_mid_dims2:
-            cur_hist_list.append(
-                nn.Sequential(
-                    nn.Linear(in_channels, m_dim),
-                    #nn.BatchNorm2d(h_dim),
-                    nn.LeakyReLU())
-            )
-            theta_info_list.append(
-                nn.Sequential(
-                    nn.Linear(in_channels, m_dim),
-                    #nn.BatchNorm2d(h_dim),
-                    nn.LeakyReLU())
-            )
-            in_channels = m_dim  
-
         self.mean = nn.Sequential(*mu_modules) 
         self.log_var = nn.Sequential(*sigma_modules)
-        self.cur_net = nn.Sequential(*cur_hist_list)
-        self.theta_net = nn.Sequential(*theta_info_list)
-        self.encoder = nn.LSTM(self.embedding_dim + int(0.5 * self.embedding_dim), self.h_dim, self.num_layers)
+        self.encoder = nn.LSTM(self.embedding_dim + self.label_dim, self.h_dim, self.num_layers)
 
     def init_hidden(self, batch_size):
         return (
@@ -106,21 +134,16 @@ class VaeEncoder2(nn.Module):
         #rel_traj = torch.cat([rel_traj, abs_traj[:,:,2:].unsqueeze(2)],dim=2)
         # rel_traj shape: batch_size x seq_len x 4
         return rel_traj
-
-    def encode(self, input, curve_hist, theta_info):
+    
+    def encode(self, input, traj_label):
         # input meaning: a trajectory len 25 and contains x, y , theta, v
         # input shape: batch x seq_len x 4
         #data_traj shape: seq_len x batch x 4
         if self.use_relative_pos:
             input = self.get_relative_position(input)
             input = input[:,:,:2]
-
-        curve_feature = self.cur_net(curve_hist)
-        theta_feature = self.theta_net(theta_info)
-        curve_feature = curve_feature.repeat(self.seq_len, 1, 1)
-        theta_feature = theta_feature.repeat(self.seq_len, 1, 1)
-        # traj_label_onehot = one_hot(traj_label.long(),num=2).unsqueeze(0)
-        # traj_label_onehot = traj_label_onehot.repeat(self.seq_len, 1, 1)
+        traj_label_onehot = one_hot(traj_label.long(),num=2).unsqueeze(0)
+        traj_label_onehot = traj_label_onehot.repeat(self.seq_len, 1, 1)
         data_traj = input.permute(1, 0, 2).contiguous()
         traj_embedding = self.spatial_embedding(data_traj.view(-1, 2))
         # traj_embedding = traj_embedding.view(self.seq_len, -1, self.embedding_dim)
@@ -129,16 +152,19 @@ class VaeEncoder2(nn.Module):
         # Here we do not specify batch_size to self.batch_size because when testing maybe batch will vary
         batch_size = traj_embedding.shape[1]
         hidden_tuple = self.init_hidden(batch_size)
-        traj_embedding = torch.cat([theta_feature, theta_feature , traj_embedding], 2)
+        traj_embedding = torch.cat([traj_label_onehot, traj_embedding], 2)
         output, encoder_h = self.encoder(traj_embedding, hidden_tuple)
         mu = self.mean(encoder_h[0])
         log_var = self.log_var(encoder_h[0])
         #mu, log_var = torch.tanh(mu), torch.tanh(log_var)
         return mu, log_var
 
-    def forward(self, input, curve_hist, theta_info):
-        return self.encode(input, curve_hist, theta_info)
-
+    def forward(self, input, traj_label=None):
+        if traj_label is None:
+            batch_size = input.shape[0]
+            traj_label = np.array([1.0])
+            traj_label = torch.from_numpy(traj_label).float().repeat(batch_size)
+        return self.encode(input, traj_label)
 
 class VaeDecoder2(nn.Module):
     def __init__(self,
@@ -200,12 +226,12 @@ class VaeDecoder2(nn.Module):
             min_st = last_st - d_steer 
             max_st = last_st + d_steer 
             steering_batch = self.clip_by_tensor(steering_batch, min_st, max_st)
-        steering_batch = torch.clamp(steering_batch, -0.5, 0.5)
+        steering_batch = torch.clamp(steering_batch, -0.6, 0.6)
 
         beta = steering_batch
         a_t = pedal_batch
         v_t_1 = v_t + a_t * dt 
-        v_t_1 = torch.clamp(v_t_1, 0, 10)
+        v_t_1 = torch.clamp(v_t_1, 0, 8)
         psi_dot = v_t * torch.tan(beta) / 2.5
         psi_dot = torch.clamp(psi_dot, -3.14 /2,3.14 /2)
         psi_t_1 = psi_dot*dt + psi_t 
@@ -278,7 +304,7 @@ def get_auto_encoder(vae_encoder, vae_decoder, expert_traj):
     
 
     with torch.no_grad():
-        mu, logvar = vae_encoder(expert_traj, curve_hist, theta_info)
+        mu, logvar = vae_encoder(expert_traj)
         z = torch.tanh(mu)
         recons_traj = vae_decoder(z, init_state)
     recons_traj = recons_traj.numpy()
