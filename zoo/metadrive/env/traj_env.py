@@ -31,19 +31,21 @@ from metadrive.utils.utils import auto_termination
 # from core.policy.ad_policy.traj_vae import VaeDecoder
 import torch
 from metadrive.component.road_network import Road
-from zoo.metadrive.utils.traj_decoder import VaeDecoder
+#from zoo.metadrive.utils.traj_decoder import VaeDecoder
+from zoo.metadrive.utils.traj_decoder_len20 import VaeDecoder
 import time 
 
 
 vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+vae_load_dir = '/home/rpai_lab_server_1/nov_dec/LightZero/zoo/metadrive/model/decoder_len_20'
 _traj_decoder = VaeDecoder(
             embedding_dim = 64,
             h_dim = 64,
             latent_dim = 3,
-            seq_len = 10,
+            seq_len = 20,
             dt = 0.1,
-            traj_control_mode = 'acc',
-            one_side_class_vae=False,
+            # traj_control_mode = 'acc',
+            # one_side_class_vae=False,
             steer_rate_constrain_value=0.5,
         )
 _traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
@@ -318,14 +320,15 @@ class MetaDriveTrajEnv(BaseEnv):
         self.z_state = np.zeros(6)
         self.avg_speed = self.config["avg_speed"]
         vae_load_dir = 'zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
+        vae_load_dir = '/home/rpai_lab_server_1/nov_dec/LightZero/zoo/metadrive/model/decoder_len_20'
         self._traj_decoder = VaeDecoder(
             embedding_dim = 64,
             h_dim = 64,
             latent_dim = 3,
-            seq_len = 10,
+            seq_len = 20,
             dt = 0.1,
-            traj_control_mode = 'acc',
-            one_side_class_vae=False,
+            # traj_control_mode = 'acc',
+            # one_side_class_vae=False,
             steer_rate_constrain_value=0.5,
         )
         # self._traj_decoder.load_state_dict(torch.load(vae_load_dir))

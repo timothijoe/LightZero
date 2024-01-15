@@ -4,7 +4,7 @@ from easydict import EasyDict
 # begin of the most frequently changed config specified by the user
 # ==============================================================
 continuous_action_space = True
-K = 8  # num_of_sampled_actions
+K = 10  # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
@@ -44,6 +44,7 @@ pendulum_sampled_efficientzero_config = dict(
             show_fps=False,
             show_navi_mark=False,
             camera_height=4.8,
+            seq_traj_len = 20,
             #show_terrain=False,
         ),
     ),
@@ -119,8 +120,9 @@ if __name__ == "__main__":
         from lzero.entry.eval_metadrive import eval_metadrive
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
     zt_path = None
+    zt_path = '/home/rpai_lab_server_1/dec_jan/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
     # zt_path = '/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar'
     # zt_path = '/home/hunter/obelisk/data_ckpt/f_server/ckpt_best.pth.tar'
-    zt_path = '/home/rpai_lab_server_1/nov_dec/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
+    #zt_path = '/home/rpai_lab_server_1/nov_dec/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
 
     eval_metadrive([main_config, create_config], seed=0, model_path=zt_path,num_episodes_each_seed=50)
