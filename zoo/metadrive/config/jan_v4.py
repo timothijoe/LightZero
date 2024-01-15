@@ -6,11 +6,11 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # begin of the most frequently changed config specified by the user
 # ==============================================================
 continuous_action_space = True
-K = 10  # num_of_sampled_actions
+K = 6 # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1
-num_simulations = 80
+num_simulations = 30
 update_per_collect = 2
 batch_size = 8
 max_env_step = int(1e6)
@@ -25,7 +25,7 @@ pendulum_sampled_efficientzero_config = dict(
     env=dict(
         env_name='Pendulum-v1',
         continuous=True,
-        obs_shape = [5, 200, 200],
+        obs_shape = [6, 200, 200],
         manually_discretization=False,
         collector_env_num=collector_env_num,
         evaluator_env_num=evaluator_env_num,
@@ -47,12 +47,13 @@ pendulum_sampled_efficientzero_config = dict(
             show_navi_mark=False,
             camera_height=4.8,
             seq_traj_len = 20,
+            explicit_expert_obs=True,
             #show_terrain=False,
         ),
     ),
     policy=dict(
         model=dict(
-            observation_shape=[5, 200, 200],
+            observation_shape=[6, 200, 200],
             action_space_size=3,
             continuous_action_space=continuous_action_space,
             num_of_sampled_actions=K,
@@ -61,7 +62,7 @@ pendulum_sampled_efficientzero_config = dict(
             lstm_hidden_size=128,
             latent_state_dim=128,
             downsample = True,
-            image_channel=5,
+            image_channel=6,
         ),
         cuda=True,
         mcts_ctree = False,
@@ -123,8 +124,8 @@ if __name__ == "__main__":
     zt_path = '/home/SENSETIME/zhoutong/osiris/shlab_data/metadrive/iteration_60000.pth.tar'
     zt_path = None
     zt_path = '/home/rpai_lab_server_1/dec_jan/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
-    #zt_path = '/home/rpai_lab_server_1/dec_jan/LightZero/data_ral_jan14_ctree/t1aec_mcts_k12_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
-    
+    zt_path = '/home/rpai_lab_server_1/dec_jan/LightZero/data_ral_jan14_ctree/t1aec_mcts_k12_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
+    #zt_path ='/home/rpai_lab_server_1/dec_jan/LightZero/data_ral_jan14_ctree/t1aec_mcts_k12_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth (copy).tar'
     # zt_path = '/home/PJLAB/puyuan/jiqun_data/gmm_mcts_best.pth.tar'
     # zt_path = '/home/hunter/obelisk/data_ckpt/f_server/ckpt_best.pth.tar'
     #zt_path = '/home/rpai_lab_server_1/nov_dec/LightZero/data_icra_dec31_ctree/t1aec_mcts_k20_ns100_upc200_rr0.0_expert_seed0/ckpt/ckpt_best.pth.tar'
