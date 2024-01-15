@@ -378,6 +378,7 @@ class MetaDriveTrajEnv(BaseEnv):
         import pickle 
         with open(zt_path_dir, 'rb') as file:
             self.path_dict = pickle.load(file)
+        self.test_traj_list =None
 
 
 
@@ -456,6 +457,8 @@ class MetaDriveTrajEnv(BaseEnv):
         #     trajs = trajs[:,:,:2]
         #     trajs = torch.squeeze(trajs, 0)
         #     actions = trajs.numpy()
+        if self.test_traj_list is not None:
+            actions['raw_traj'] = self.test_traj_list
         macro_actions = self._preprocess_macro_waypoints(actions)
         time_1 = time.time()
         step_infos = self._step_macro_simulator(macro_actions)
@@ -866,6 +869,17 @@ class MetaDriveTrajEnv(BaseEnv):
             else:
                 o_dict = o
 
+            vehicle = self.vehicles['default_agent']
+            robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])
+            zt_traj_list = get_lane_lateral_pos(vehicle, robot_pos, self.path_dict)
+            test_zt = get_expert_candidates(vehicle, robot_pos, self.path_dict)
+            actions = zt_traj_list[0]
+            ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
+            ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
+            if self.step_num % 2 ==1:
+                actions = ztt
+            # actions = ztt
+            self.test_traj_list = actions
             if self.config["explicit_expert_obs"]:
                 vehicle = self.vehicles['default_agent']
                 robot_pos = np.array([vehicle.position[0], vehicle.position[1], vehicle.heading_theta, self.z_state[3]])

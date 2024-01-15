@@ -6,7 +6,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 # begin of the most frequently changed config specified by the user
 # ==============================================================
 continuous_action_space = True
-K = 6 # num_of_sampled_actions
+K = 5 # num_of_sampled_actions
 collector_env_num = 1
 n_episode = 1
 evaluator_env_num = 1

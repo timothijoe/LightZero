@@ -669,7 +669,9 @@ def batch_traverse(
             The leaf node is the node that is currently not expanded.
         """
         while node.expanded:
-            if(len(results.search_paths[i]) == 1):
+            root_child_full_expanded_label = True
+            #root_child_full_expanded_label = True
+            if(len(results.search_paths[i]) == 1 and root_child_full_expanded_label):
                 if not node.all_children_expanded:
                     action, child_node = next((action, child_node) for action, child_node in node.children.items() if not child_node.expanded)
                 elif not node.all_children_exhausted:
@@ -683,7 +685,7 @@ def batch_traverse(
                         node, min_max_stats_lst.stats_lst[i], pb_c_base, pb_c_init, discount_factor, mean_q, players,
                         continuous_action_space
                     )
-            elif(len(results.search_paths[i]) == 2):
+            elif(len(results.search_paths[i]) == 2 and root_child_full_expanded_label):
                 if not node.all_children_expanded:
                     action, child_node = next((action, child_node) for action, child_node in node.children.items() if not child_node.expanded)
                 else:
