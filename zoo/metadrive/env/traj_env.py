@@ -876,8 +876,10 @@ class MetaDriveTrajEnv(BaseEnv):
             actions = zt_traj_list[0]
             ztt = get_auto_encoder(self._traj_encoder2, self._traj_decoder2, actions)
             ztt2, z = get_auto_encoder2(self._traj_encoder2, self._traj_decoder2, test_zt)
-            if self.step_num % 2 ==1:
-                actions = ztt
+            actions = ztt
+            # actions = zt_traj_list[0]
+            # if self.step_num % 4 ==1:
+            #     actions = zt_traj_list[0]
             # actions = ztt
             self.test_traj_list = actions
             if self.config["explicit_expert_obs"]:

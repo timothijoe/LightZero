@@ -33,7 +33,7 @@ pendulum_sampled_efficientzero_config = dict(
         manager=dict(shared_memory=False, ),
         metadrive=dict(
             use_render=True,
-            traffic_density=0.25,  # Density of vehicles occupying the roads, range in [0,1]
+            traffic_density=0.30, #0.25  # Density of vehicles occupying the roads, range in [0,1]
             show_seq_traj = True,
             #map='XSOS',  # Int or string: an easy way to fill map_config
             out_of_route_done=True,  # Game over if driving out of road
