@@ -35,24 +35,22 @@ class SPIRLDataset(Dataset):
             self.last_traj = None 
             self.last_obs = None 
             zt_num = 0
-            for zt_num in range(len(episode_data['transition_list'])):
-                transition_data = episode_data['transition_list'][zt_num]
+            for transition_data in episode_data['transition_list']:
                 if zt_num == 0:
                     pass 
                 else:
                     new_trans = {}
-                    new_trans['observation'] = copy.deepcopy(self.last_obs )
+                    new_trans['observation'] = self.last_obs 
                     previous_traj_fine = copy.deepcopy(self.last_traj)
                     consecutive_traj = transition_data['tftraj']
                     consecutive_traj_fine = consecutive_traj[1:]
                     total_traj = np.concatenate((previous_traj_fine, consecutive_traj_fine), axis=0)
                     new_trans['trajectory'] = total_traj 
-                    trans_key = len(transition_library)
-                    transition_library[str(trans_key)] = new_trans 
                 self.last_traj = transition_data['raw_traj']
                 self.last_obs = transition_data['observation']
-                # trans_key = len(transition_library)
-                # transition_library[str(trans_key)] = transition_data 
+                trans_key = len(transition_library)
+                transition_library[str(trans_key)] = transition_data 
+                zt_num += 1 
         return transition_library
 
         
@@ -62,7 +60,4 @@ class SPIRLDataset(Dataset):
 
     def __getitem__(self, index: int) -> Any:
         #return self.extract_data[str(index)]['state'], self.extract_data[str(index)]['action']
-        # return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['latent_action']
-        zt = np.array([0,0,0, 0.4])
-        #return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['trajectory'][0] + zt, self.extract_data[str(index)]['trajectory'][:,:2]
-        return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['observation']['vehicle_state'][:4] + zt, self.extract_data[str(index)]['trajectory'][:,:2]
+        return self.extract_data[str(index)]['observation']['birdview'].transpose((2, 0, 1)), self.extract_data[str(index)]['latent_action']

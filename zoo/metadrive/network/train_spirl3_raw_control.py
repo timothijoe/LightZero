@@ -6,7 +6,7 @@ from tensorboardX import SummaryWriter
 from easydict import EasyDict
 from tqdm import tqdm
 from spirl_model import SpirlEncoder
-from spirl_dataset import SPIRLDataset
+from spirl_traj_dataset import SPIRLDataset
 from utils import mk_logdir, loss_function
 from utils import mk_logdir, loss_function
 from traj_decoder_len20 import VaeDecoder
@@ -15,9 +15,10 @@ from traj_decoder_len20 import VaeDecoder
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
 expert_dir = '/home/hunter/hoffung/mask_folder/'
-expert_dir = '/home/rpai_lab_server_1/dec_jan/data_related/xad_expert_data/'
+expert_dir = '/home/rpai_lab_server_1/dec_jan/data_related/xad_expert_data_expcc/'
+expert_dir = '/home/rpai_lab_server_1/dec_jan/data_related/xad_expert_data_expcc_change_lane/'
 metadrive_basic_config = dict(
-    exp_name = 'metadrive_train_expert5_jan08',
+    exp_name = 'metadrive_train_expert5_jan11_expcc_lane_chagne',
     policy=dict(
         cuda="cuda",
         model=dict(

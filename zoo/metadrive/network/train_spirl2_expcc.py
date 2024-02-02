@@ -15,9 +15,9 @@ from traj_decoder_len20 import VaeDecoder
 expert_dir = '/home/PJLAB/puyuan/hoffung/taecrl_data/straight'
 expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
 expert_dir = '/home/hunter/hoffung/mask_folder/'
-expert_dir = '/home/rpai_lab_server_1/dec_jan/data_related/xad_expert_data/'
+expert_dir = '/home/rpai_lab_server_1/dec_jan/data_related/xad_expert_data_expcc/'
 metadrive_basic_config = dict(
-    exp_name = 'metadrive_train_expert5_jan08',
+    exp_name = 'metadrive_train_expert5_jan10_expcc',
     policy=dict(
         cuda="cuda",
         model=dict(

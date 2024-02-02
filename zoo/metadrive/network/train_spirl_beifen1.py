@@ -17,9 +17,9 @@ expert_dir = '/home/zhoutong/hoffung/expert_data_collection/straight'
 expert_dir = '/home/hunter/hoffung/mask_folder/'
 expert_dir = '/home/rpai_lab_server_1/dec_jan/data_related/xad_expert_data/'
 metadrive_basic_config = dict(
-    exp_name = 'metadrive_train_expert5_jan08',
+    exp_name = 'metadrive_train_expert3',
     policy=dict(
-        cuda="cuda",
+        cuda=True,
         model=dict(
             obs_shape=[5, 200, 200],
             action_shape=3,
@@ -48,9 +48,8 @@ zt_traj_decoder = VaeDecoder(
 )
 vae_load_dir = '/home/hunter/hoffung/LightZero/zoo/metadrive/model/nov02_len10_dim3_v1_ckpt'
 vae_load_dir = '/home/rpai_lab_server_1/nov_dec/LightZero/zoo/metadrive/model/decoder_len_20'
-#zt_traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
-zt_traj_decoder.load_state_dict(torch.load(vae_load_dir))
-zt_traj_decoder.to(main_config.policy.cuda)
+zt_traj_decoder.load_state_dict(torch.load(vae_load_dir,map_location=torch.device('cpu')))
+
 
 def main(cfg):
 
@@ -58,8 +57,7 @@ def main(cfg):
     tb_logger = SummaryWriter('result/{}/log/'.format(cfg.exp_name))
     for param in zt_traj_decoder.parameters():
         param.requires_grad = False
-    model = SpirlEncoder(**cfg.policy.model).float()
-    model.to(cfg.policy.cuda)
+    model = SpirlEncoder(**cfg.policy.model)
     train_dataset = SPIRLDataset(expert_dir)
     train_loader = DataLoader(train_dataset, cfg.policy.learn.batch_size, shuffle=True, num_workers=8)
     optimizer = Adam(model.parameters(), lr=cfg.policy.learn.lr)
@@ -80,9 +78,9 @@ def main(cfg):
         model.train()
         epoch_loss = 0
         for data_state, data_vehicle_state, gt_trajs in tqdm(train_loader):
-            data_state = data_state.to(torch.float32).to(cfg.policy.cuda)
-            data_vehicle_state = data_vehicle_state.to(torch.float32).to(cfg.policy.cuda)
-            gt_trajs = gt_trajs.to(torch.float32).to(cfg.policy.cuda)
+            data_state = data_state.to(torch.float32)
+            data_vehicle_state = data_vehicle_state.to(torch.float32)
+            gt_trajs = gt_trajs.to(torch.float32)
 
             pred_action = model(data_state)
             init_state = data_vehicle_state
