@@ -383,6 +383,12 @@ class SampledEfficientZeroModel(nn.Module):
         #expert_encoder_wild_path = pwd + '/model_path/straight_wild_model'
         #expert_encoder_agressive_path = pwd + '/model_path/straight_agressive_model'
         expert_encoder_agressive_path = pwd + '/model_path/straight_wild_model'
+
+
+        expert_encoder_ckpt_path = '/home/rpai_lab_server_1/osiris/LightZero/model_path/inter_80_model'
+        expert_encoder_wild_path = '/home/rpai_lab_server_1/osiris/LightZero/model_path/inter_wild_ckpt'
+        expert_encoder_agressive_path = '/home/rpai_lab_server_1/osiris/LightZero/model_path/inter_agressive_ckpt'
+
         # expert_encoder_ckpt_path = '/home/PJLAB/puyuan/Downloads/70_ckpt'
         checkpoint = torch.load(expert_encoder_ckpt_path)
         checkpoint_wild = torch.load(expert_encoder_wild_path)
