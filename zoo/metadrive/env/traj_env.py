@@ -253,8 +253,8 @@ class MetaDriveTrajEnv(BaseEnv):
         #zt_path_dir = '/home/zhoutong/dec_jan/traj_data_process/dataset/metadrive/path_matfiles/jan11_path_turn15m.pickle'
         encoder_path = '/home/zhoutong/dec_jan/traj_data_process/result/zt_jan13_013/ckpt/99_encoder'
         decoder_path = '/home/zhoutong/dec_jan/traj_data_process/result/zt_jan13_013/ckpt/99_decoder'
-        encoder_path = 'zoo/metadrive/data/99_encoder_ckpt'
-        decoder_path = 'zoo/metadrive/data/99_decoder_ckpt'
+        encoder_path = 'zoo/metadrive/data/99_encoder'
+        decoder_path = 'zoo/metadrive/data/99_decoder'
         self._traj_encoder2.load_state_dict(torch.load(encoder_path,map_location=torch.device('cpu')))
         self._traj_decoder2.load_state_dict(torch.load(decoder_path,map_location=torch.device('cpu')))
         import pickle 
