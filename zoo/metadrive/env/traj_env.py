@@ -510,16 +510,17 @@ class MetaDriveTrajEnv(BaseEnv):
             for speed in speed_list: 
                 speed_reward += self.config["speed_reward"] * (speed / max_spd) * positive_road  
                 if self.config['add_extra_speed_penalty']:
-                    if speed < self.avg_speed:
+                    if speed < self.avg_speed * 0.8:
                         speed_reward -= 0.12 
                 else: 
-                    if speed < self.avg_speed - 2:
+                    if speed < self.avg_speed - 1:
                         speed_reward -= 0.04 #0.06, 0.12
         if self.config["use_heading_reward"]:
             # Heading Reward
             heading_error_list = self.compute_heading_error_list(vehicle, current_lane)
             for heading_error in heading_error_list:
-                heading_reward += self.config["heading_reward"] * (0 - np.abs(heading_error))             
+                heading_reward += self.config["heading_reward"] * (0 - np.abs(heading_error))  
+            heading_reward += self.config["heading_reward"] * (0-np.abs(heading_error_list[-1])) *10          
         if self.config["use_jerk_reward"]:
             jerk_list = self.compute_jerk_list(vehicle)
             for jerk in jerk_list:
