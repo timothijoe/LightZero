@@ -112,7 +112,7 @@ class Node:
             # print(dist.batch_shape, dist.event_shape)
             num_remaining_action = self.num_of_sampled_actions 
             if expert_logits is not None:
-                num_remaining_action = self.num_of_sampled_actions -1
+                num_remaining_action = self.num_of_sampled_actions -len(expert_logits)
                 sampled_actions_before_tanh = dist.sample(torch.tensor([num_remaining_action]))
                 expert_logits = np.array(expert_logits)
                 expert_actions_before_tanh = torch.from_numpy(expert_logits)

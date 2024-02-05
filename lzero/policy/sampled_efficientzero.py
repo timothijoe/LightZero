@@ -81,6 +81,7 @@ class SampledEfficientZeroPolicy(Policy):
         use_bayesian = False,
         bayesian_alpha = 1.0,
         multi_task_learning = False, # if true, we optimize policy to target policy and KL diverence to imitation learning result
+        num_expert = 3,
         # (int) The number of environments used in collecting data.
         collector_env_num=8,
         # (int) The number of environments used in evaluating policy.
@@ -272,6 +273,8 @@ class SampledEfficientZeroPolicy(Policy):
         self.inverse_scalar_transform_handle = InverseScalarTransform(
             self._cfg.model.support_scale, self._cfg.device, self._cfg.model.categorical_distribution
         )
+        if self._cfg.num_expert == 0:
+            self._cfg.use_expert = False
 
     def _forward_learn(self, data: torch.Tensor) -> Dict[str, Union[float, int]]:
         """
@@ -347,6 +350,11 @@ class SampledEfficientZeroPolicy(Policy):
         network_output = self._learn_model.initial_inference(obs_batch)
         expert_frame = encoder_image_list[0]
         expert_policy_tensor = self._calculate_expert_policy(expert_frame)
+        if self._cfg.num_expert == 0:
+            expert_policy_tensor = None
+        elif self._cfg.num_expert == 1:
+            self._cfg.use_bayesian = False 
+            expert_policy_tensor = expert_policy_tensor[:,0:1,:]
 
         # with torch.no_grad():
         #     expert_frame = encoder_image_list[0]
@@ -450,6 +458,12 @@ class SampledEfficientZeroPolicy(Policy):
                     consistency_loss += temp_loss
             expert_frame = encoder_image_list[step_i+1]
             expert_policy_tensor = self._calculate_expert_policy(expert_frame)
+
+            if self._cfg.num_expert == 0:
+                expert_policy_tensor = None
+            elif self._cfg.num_expert == 1:
+                self._cfg.use_bayesian = False 
+                expert_policy_tensor = expert_policy_tensor[:,0:1,:]
 
             # NOTE: the target policy, target_value_categorical, target_value_prefix_categorical is calculated in
             # game buffer now.
@@ -1128,7 +1142,8 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_latent_action_agressive = torch.arctanh(expert_latent_action_agressive)
                 #final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
                 final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild, expert_latent_action_agressive), dim=1)
-                
+                if self._cfg.num_expert == 1:
+                    final_expert_action = final_expert_action[:, 0:1, :]          
                 # expert_latent_action = expert_latent_action.detach().cpu().numpy().tolist()  
                 # expert_latent_action_wild = expert_latent_action_wild.detach().cpu().numpy().tolist()
                 # final_expert_list = [expert_latent_action + expert_latent_action_wild]
@@ -1289,6 +1304,8 @@ class SampledEfficientZeroPolicy(Policy):
                 expert_latent_action_agressive = torch.arctanh(expert_latent_action_agressive)
                 #final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild), dim=1)
                 final_expert_action = torch.stack((expert_latent_action, expert_latent_action_wild, expert_latent_action_agressive), dim=1)
+                if self._cfg.num_expert == 1:
+                    final_expert_action = final_expert_action[:, 0:1, :]     
                 final_expert_list = final_expert_action.detach().cpu().numpy().tolist() 
 
 

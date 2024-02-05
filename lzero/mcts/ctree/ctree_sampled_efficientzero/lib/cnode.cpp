@@ -339,9 +339,15 @@ namespace tree
                 sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
             }
             float logProb = calculateLogProb(gmm, sampledAction);
-            float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
-            float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
-            logProb = logProb + 0.1 * std::max(glogProb1, glogProb2);
+            // float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
+            // float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
+            // logProb = logProb + 0.1 * std::max(glogProb1, glogProb2);
+            float glogProb_final = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
+            for(int ii = 0; ii < this->expert_sample_num; ++ii){
+                float glogProb = calculateGaussianProb(expert_latent_action[ii], expert_latent_sigma, sampledAction);
+                glogProb_final = std::max(glogProb_final, glogProb);
+            }
+            logProb = logProb + 0.1 * glogProb_final;
             float y_sum = std::accumulate(y.begin(), y.end(), 0.);
             sampled_actions_log_probs_after_tanh.push_back(logProb - log(y_sum));
             sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
@@ -362,9 +368,17 @@ namespace tree
                 sampled_action_after_tanh.push_back(tanh(sampled_action_one_dim_before_tanh));
             }
             float logProb = calculateLogProb(gmm, sampledAction);
-            float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
-            float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
-            logProb = logProb + 0.1 * std::max(glogProb1, glogProb2);
+            // float glogProb1 = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
+            // float glogProb2 = calculateGaussianProb(expert_latent_action[1], expert_latent_sigma, sampledAction);
+            //float glogProb_final = 0;
+            // logProb = logProb + 0.1 * std::max(glogProb1, glogProb2);
+            float glogProb_final = calculateGaussianProb(expert_latent_action[0], expert_latent_sigma, sampledAction);
+            for(int ii = 0; ii < this->expert_sample_num; ++ii){
+                float glogProb = calculateGaussianProb(expert_latent_action[ii], expert_latent_sigma, sampledAction);
+                glogProb_final = std::max(glogProb_final, glogProb);
+            }
+            logProb = logProb + 0.1 * glogProb_final;
+            
             float y_sum = std::accumulate(y.begin(), y.end(), 0.);
             sampled_actions_log_probs_after_tanh.push_back(logProb - log(y_sum));
             sampled_actions_after_tanh.push_back(sampled_action_after_tanh);
